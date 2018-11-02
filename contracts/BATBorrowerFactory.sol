@@ -1,10 +1,11 @@
 pragma solidity ^0.4.24;
 
-import "./CompoundPosition.sol";
+import "./CompoundBorrower.sol";
 import "./EIP20Interface.sol";
 
 contract BATBorrowerFactory {
   address constant BATAddress = 0x2;
+  address constant wethAddress = 0x1;
   uint constant startingCollateralRatio = 2;
   mapping(address => address) public borrowers;
 
@@ -18,7 +19,7 @@ contract BATBorrowerFactory {
 
     if (borrowers[msg.sender] == address(0x0)) {
       // if new position, fund and borrow
-       borrower = (new CompoundBorrower(msg.sender, BATAddress));
+      borrower = (new CompoundBorrower(msg.sender, BATAddress, wethAddress, 0x0));
        borrowerAddress = address(borrower);
 
        borrowers[msg.sender] = borrowerAddress;

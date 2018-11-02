@@ -16,7 +16,16 @@ module.exports = {
     ganache: {
       host: "127.0.0.1",
       port: 8545,
+      // gas: 0xfffffffffff,
+      // gasPrice: 0x01,
       network_id: "*" // matching any id
+    },
+    test: {
+      host: "localhost",
+      port: 8545,
+      network_id: "*",
+      gas: 6721975,
+      gasPrice: 1
     }
   }
 };
