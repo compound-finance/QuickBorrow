@@ -7,8 +7,11 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
   mapping(address => mapping(address => uint)) public supplyBalances;
   mapping(address => mapping(address => uint)) public borrowBalances;
 
-  function yo() returns ( string ) {
-    return "eggs";
+  event Ow(uint ow);
+  event Me(address eee);
+
+  function yo() public {
+    emit Me(address(this));
   }
 
   function borrow(address asset, uint amount) public returns (uint) {
@@ -18,8 +21,11 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
   }
 
   function supply(address asset, uint amount) public returns (uint) {
+    emit Ow(amount);
+    emit Me(address(this));
     supplyBalances[msg.sender][asset] += amount;
     EIP20Interface(asset).transferFrom(msg.sender, address(this), amount);
+    emit Ow(supplyBalances[msg.sender][asset]);
     return 0;
   }
 
@@ -34,4 +40,10 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
     EIP20Interface(asset).transferFrom(msg.sender, address(this), amount);
     return 0;
   }
+
+  function getSupplyBalance(address account, address asset)  public returns (uint) {
+    emit Ow(supplyBalances[account][asset]);
+    return supplyBalances[account][asset];
+  }
+
 }

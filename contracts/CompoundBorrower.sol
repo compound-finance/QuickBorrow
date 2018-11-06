@@ -1,6 +1,7 @@
 pragma solidity ^0.4.24;
 
 import "./EIP20Interface.sol";
+import "./WrappedEtherInterface.sol";
 import "./MoneyMarketAccountInterface.sol";
 
 contract CompoundBorrower {
@@ -9,32 +10,48 @@ contract CompoundBorrower {
   address creator;
   address owner;
   address wethAddress;
-  MoneyMarketAccountInterface compoundMoneyMarket;
 
   constructor (address owner_, address tokenToBorrow_, address wethAddress_, address moneyMarketAddress_) public {
     creator = msg.sender;
     owner = owner_;
     borrowedTokenAddress = tokenToBorrow_;
     wethAddress = wethAddress_;
-    compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress_);
+    moneyMarketAddress = moneyMarketAddress_;
   }
 
+  event Please(string comone);
+  event How(uint val);
+
   function yo() public returns ( string ) {
-      return "bacon";
+    emit Please("please");
+    return "bacon";
   }
 
   // turn all received ether into weth and fund it to compound
   function () payable public {
-    EIP20Interface weth = EIP20Interface(wethAddress);
-    // weth.deposit or something to wrap
-    uint wethBalance = weth.balanceOf(address(this));
+    emit Please("thanks");
+    emit How(msg.value);
+    emit How(address(this).balance);
+    WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
     weth.approve(moneyMarketAddress, uint(-1));
-    compoundMoneyMarket.supply(wethAddress, wethBalance);
+    weth.deposit.value(msg.value)();
+
+    uint wethBalance = weth.balanceOf(address(this));
+    emit How(wethBalance);
+
+    emit Please("approved");
+
+    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
+    emit Please("interface created");
+    compoundMoneyMarket.yo();
+    emit Please("yooo");
+    compoundMoneyMarket.supply(wethAddress, 10);
   }
 
   function borrow(uint requestedAmount) public {
     require(creator == msg.sender);
 
+    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
     compoundMoneyMarket.borrow(borrowedTokenAddress, requestedAmount);
 
     // this contract will now hold borrowed tokens, sweep them to owner
@@ -45,6 +62,7 @@ contract CompoundBorrower {
   function repay() public {
     require(creator == msg.sender);
 
+    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
     compoundMoneyMarket.repayBorrow(borrowedTokenAddress, uint(1));
     compoundMoneyMarket.withdraw(wethAddress, uint(-1));
 

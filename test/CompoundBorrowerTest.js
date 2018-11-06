@@ -1,6 +1,6 @@
 
 const MoneyMarket_ = artifacts.require("MoneyMarketMock");
-const weth_ = artifacts.require("WrappedEther");
+const weth_ = artifacts.require("WETHMock");
 const borrowToken_ = artifacts.require("StandardTokenMock");
 const CompoundBorrower_ = artifacts.require("CompoundBorrower");
 
@@ -23,13 +23,12 @@ contract('CompoundBorrower', function([account1, ...accounts]) {
   });
 
   it("supplies all sent ether to moneymarket as weth", async () => {
-    assert.equal(await mmm.yo.call(), "eggs" , "suckkaaa");
-
     let borrower = await CompoundBorrower_.new(account1, borrowToken.address, weth.address, mmm.address);
-    assert.equal(await borrower.yo.call(), "bacon" , "suckkaaa");
 
+    await web3.eth.sendTransaction({to: borrower.address, from: account1, value: web3.toWei(10, "ether"), gas: 5000000});
 
-
+    var borrowerBalance = await mmm.getSupplyBalance.call(borrower.address, weth.address);
+     assert.equal(borrowerBalance.toNumber(), 10, "sending 10 eth results in 10 weth supply balance");
   });
 
            // liquidatein

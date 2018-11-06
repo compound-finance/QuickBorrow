@@ -1,5 +1,5 @@
 const MoneyMarket = artifacts.require("MoneyMarketMock");
-const weth = artifacts.require("WrappedEther");
+const weth = artifacts.require("WETHMock");
 const borrowToken = artifacts.require("StandardTokenMock");
 
 module.exports = function(deployer) {
