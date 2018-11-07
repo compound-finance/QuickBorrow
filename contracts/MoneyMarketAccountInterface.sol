@@ -9,5 +9,14 @@ contract MoneyMarketAccountInterface {
 
   function repayBorrow(address asset, uint amount) public returns (uint);
 
-  function yo() public;
+  //second wave
+  function getSupplyBalance(address account, address asset)  public returns (uint);
+
+  function getBorrowBalance(address account, address asset)  public returns (uint);
+
+  //third wave
+  function assetPrices(address asset) public view returns (uint);
+
+
+  uint public collateralRatio;
 }

@@ -21,11 +21,8 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
   }
 
   function supply(address asset, uint amount) public returns (uint) {
-    emit Ow(amount);
-    emit Me(address(this));
     supplyBalances[msg.sender][asset] += amount;
     EIP20Interface(asset).transferFrom(msg.sender, address(this), amount);
-    emit Ow(supplyBalances[msg.sender][asset]);
     return 0;
   }
 
@@ -40,10 +37,23 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
     EIP20Interface(asset).transferFrom(msg.sender, address(this), amount);
     return 0;
   }
+  // second wave
 
   function getSupplyBalance(address account, address asset)  public returns (uint) {
     emit Ow(supplyBalances[account][asset]);
     return supplyBalances[account][asset];
   }
 
+  function getBorrowBalance(address account, address asset)  public returns (uint) {
+    emit Ow(borrowBalances[account][asset]);
+    return borrowBalances[account][asset];
+  }
+
+  // third wave
+
+  function assetPrices(address asset) public view returns (uint) {
+    return 1444312499999999;
+  }
+
+  uint public collateralRatio = 1500000000000000000;
 }

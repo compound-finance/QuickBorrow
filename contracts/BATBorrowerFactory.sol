@@ -23,9 +23,9 @@ contract BATBorrowerFactory {
        borrowerAddress = address(borrower);
 
        borrowers[msg.sender] = borrowerAddress;
+       // the borrower contract will borrows tokens forward
+       // them to the original sender
        borrowerAddress.transfer(msg.value);
-       // borrows tokens and forwards them to the original sender
-       borrower.borrow(5);
     } else {
       // if position already exists, add funds to improve collateral ratio
       borrowerAddress = borrowers[msg.sender];

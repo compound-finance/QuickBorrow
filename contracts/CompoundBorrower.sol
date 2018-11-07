@@ -3,8 +3,9 @@ pragma solidity ^0.4.24;
 import "./EIP20Interface.sol";
 import "./WrappedEtherInterface.sol";
 import "./MoneyMarketAccountInterface.sol";
+import "./Exponential.sol";
 
-contract CompoundBorrower {
+contract CompoundBorrower is Exponential {
   address borrowedTokenAddress;
   address moneyMarketAddress;
   address creator;
@@ -29,33 +30,47 @@ contract CompoundBorrower {
 
   // turn all received ether into weth and fund it to compound
   function () payable public {
-    emit Please("thanks");
-    emit How(msg.value);
-    emit How(address(this).balance);
     WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
     weth.approve(moneyMarketAddress, uint(-1));
     weth.deposit.value(msg.value)();
 
-    uint wethBalance = weth.balanceOf(address(this));
-    emit How(wethBalance);
-
-    emit Please("approved");
-
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
-    emit Please("interface created");
-    compoundMoneyMarket.yo();
-    emit Please("yooo");
-    compoundMoneyMarket.supply(wethAddress, 10);
+
+    compoundMoneyMarket.supply(wethAddress, msg.value);
+
+
+    borrow();
+    /*   // this contract will now hold borrowed tokens, sweep them to owner */
+    giveTokensToOwner();
   }
 
-  function borrow(uint requestedAmount) public {
-    require(creator == msg.sender);
-
+  function borrow() private {
+    // find value of token in eth from oracle
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
-    compoundMoneyMarket.borrow(borrowedTokenAddress, requestedAmount);
+    uint assetPrice = compoundMoneyMarket.assetPrices(borrowedTokenAddress);
+    emit How(assetPrice);
 
-    // this contract will now hold borrowed tokens, sweep them to owner
-    giveTokensToOwner();
+    uint collateralRatio = compoundMoneyMarket.collateralRatio();
+    // multiply by msg.value
+    emit How(collateralRatio);
+
+
+
+    (Error err1, Exp memory possibleTokens) = getExp(msg.value, assetPrice);
+    emit How(possibleTokens.mantissa);
+    emit Please("full falue as token ^" );
+    (Error err2, Exp memory safeTokens) = getExp(possibleTokens.mantissa, collateralRatio);
+      /* msg.value / collateralRatio * assetPrice */
+    /* uint amountToBorrow = msg.value / conversionFactor; */
+    emit How(safeTokens.mantissa);
+
+    emit Please("safe tokens above borrow below" );
+    uint amountToBorrow = truncate(safeTokens);
+    emit How(amountToBorrow);
+    // multiply by collateral ratio
+    // multiply by some constant in this contract
+    // borrow that amount
+    compoundMoneyMarket.borrow(borrowedTokenAddress, amountToBorrow);
   }
 
   // this contract must receive the tokens to repay before this function will succeed
