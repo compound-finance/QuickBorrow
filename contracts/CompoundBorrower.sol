@@ -23,11 +23,6 @@ contract CompoundBorrower is Exponential {
   event Please(string comone);
   event How(uint val);
 
-  function yo() public returns ( string ) {
-    emit Please("please");
-    return "bacon";
-  }
-
   // turn all received ether into weth and fund it to compound
   function () payable public {
     WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
@@ -35,9 +30,7 @@ contract CompoundBorrower is Exponential {
     weth.deposit.value(msg.value)();
 
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
-
     compoundMoneyMarket.supply(wethAddress, msg.value);
-
 
     borrow();
     /*   // this contract will now hold borrowed tokens, sweep them to owner */
@@ -48,37 +41,25 @@ contract CompoundBorrower is Exponential {
     // find value of token in eth from oracle
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
     uint assetPrice = compoundMoneyMarket.assetPrices(borrowedTokenAddress);
-    emit How(assetPrice);
 
     uint collateralRatio = compoundMoneyMarket.collateralRatio();
-    // multiply by msg.value
-    emit How(collateralRatio);
-
-
 
     (Error err1, Exp memory possibleTokens) = getExp(msg.value, assetPrice);
-    emit How(possibleTokens.mantissa);
-    emit Please("full falue as token ^" );
     (Error err2, Exp memory safeTokens) = getExp(possibleTokens.mantissa, collateralRatio);
-      /* msg.value / collateralRatio * assetPrice */
-    /* uint amountToBorrow = msg.value / conversionFactor; */
-    emit How(safeTokens.mantissa);
 
-    emit Please("safe tokens above borrow below" );
     uint amountToBorrow = truncate(safeTokens);
-    emit How(amountToBorrow);
-    // multiply by collateral ratio
-    // multiply by some constant in this contract
-    // borrow that amount
     compoundMoneyMarket.borrow(borrowedTokenAddress, amountToBorrow);
   }
 
   // this contract must receive the tokens to repay before this function will succeed
   function repay() public {
-    require(creator == msg.sender);
+    require(owner == msg.sender);
+
+    EIP20Interface borrowedToken = EIP20Interface(borrowedTokenAddress);
+    borrowedToken.approve(moneyMarketAddress, uint(-1));
 
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
-    compoundMoneyMarket.repayBorrow(borrowedTokenAddress, uint(1));
+    compoundMoneyMarket.repayBorrow(borrowedTokenAddress, uint(-1));
     compoundMoneyMarket.withdraw(wethAddress, uint(-1));
 
     giveTokensToOwner();

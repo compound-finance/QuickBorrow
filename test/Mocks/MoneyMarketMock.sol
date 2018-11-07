@@ -7,13 +7,6 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
   mapping(address => mapping(address => uint)) public supplyBalances;
   mapping(address => mapping(address => uint)) public borrowBalances;
 
-  event Ow(uint ow);
-  event Me(address eee);
-
-  function yo() public {
-    emit Me(address(this));
-  }
-
   function borrow(address asset, uint amount) public returns (uint) {
     borrowBalances[msg.sender][asset] += amount;
     EIP20Interface(asset).transfer(msg.sender, amount);
@@ -27,25 +20,43 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
   }
 
   function withdraw(address asset, uint amount) public returns (uint) {
-    supplyBalances[msg.sender][asset] -= amount;
-    EIP20Interface(asset).transfer(msg.sender, amount);
+    EIP20Interface token = EIP20Interface(asset);
+    uint supplyBalance = supplyBalances[msg.sender][asset];
+
+    uint withdrawAmount;
+    if (amount == uint(-1)) {
+      withdrawAmount = min(token.balanceOf(msg.sender), supplyBalance);
+    } else {
+      withdrawAmount = supplyBalance;
+    }
+
+    supplyBalances[msg.sender][asset] -= withdrawAmount;
+    token.transfer(msg.sender, withdrawAmount);
     return 0;
   }
 
   function repayBorrow(address asset, uint amount) public returns (uint) {
-    borrowBalances[msg.sender][asset] -= amount;
-    EIP20Interface(asset).transferFrom(msg.sender, address(this), amount);
+    EIP20Interface token = EIP20Interface(asset);
+    uint borrowBalance = borrowBalances[msg.sender][asset];
+
+    uint repayAmount;
+    if (amount == uint(-1)) {
+      repayAmount = min(token.balanceOf(msg.sender), borrowBalance);
+    } else {
+      repayAmount = amount;
+    }
+
+    borrowBalances[msg.sender][asset] -= repayAmount;
+    token.transferFrom(msg.sender, address(this), repayAmount);
     return 0;
   }
   // second wave
 
   function getSupplyBalance(address account, address asset)  public returns (uint) {
-    emit Ow(supplyBalances[account][asset]);
     return supplyBalances[account][asset];
   }
 
   function getBorrowBalance(address account, address asset)  public returns (uint) {
-    emit Ow(borrowBalances[account][asset]);
     return borrowBalances[account][asset];
   }
 
@@ -56,4 +67,13 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
   }
 
   uint public collateralRatio = 1500000000000000000;
+
+
+  function min(uint a, uint b) pure internal returns (uint) {
+    if (a < b) {
+      return a;
+    } else {
+      return b;
+    }
+  }
 }

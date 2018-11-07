@@ -17,6 +17,5 @@ contract MoneyMarketAccountInterface {
   //third wave
   function assetPrices(address asset) public view returns (uint);
 
-
   uint public collateralRatio;
 }
