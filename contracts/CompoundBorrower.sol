@@ -6,22 +6,19 @@ import "./MoneyMarketAccountInterface.sol";
 import "./Exponential.sol";
 
 contract CompoundBorrower is Exponential {
-  address borrowedTokenAddress;
+  address tokenAddress;
   address moneyMarketAddress;
   address creator;
   address owner;
   address wethAddress;
 
-  constructor (address owner_, address tokenToBorrow_, address wethAddress_, address moneyMarketAddress_) public {
+  constructor (address _owner, address _tokenAddress, address _wethAddress, address _moneyMarketAddress) public {
     creator = msg.sender;
-    owner = owner_;
-    borrowedTokenAddress = tokenToBorrow_;
-    wethAddress = wethAddress_;
-    moneyMarketAddress = moneyMarketAddress_;
+    owner = _owner;
+    tokenAddress = _tokenAddress;
+    wethAddress = _wethAddress;
+    moneyMarketAddress = _moneyMarketAddress;
   }
-
-  event Please(string comone);
-  event How(uint val);
 
   // turn all received ether into weth and fund it to compound
   function () payable public {
@@ -32,36 +29,33 @@ contract CompoundBorrower is Exponential {
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
     compoundMoneyMarket.supply(wethAddress, msg.value);
 
-    if (compoundMoneyMarket.getBorrowBalance(address(this), borrowedTokenAddress) == 0) {
-      borrow();
+    // if no borrow yet, borrow a safe amount of tokens
+    // otherwise, hold weth as supply to have healthy collateral ratio
+    if (compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress) == 0) {
+      // find value of token in eth from oracle
+      uint assetPrice = compoundMoneyMarket.assetPrices(tokenAddress);
+
+      uint collateralRatio = compoundMoneyMarket.collateralRatio();
+
+      (Error _err1, Exp memory possibleTokens) = getExp(msg.value, assetPrice);
+      (Error _err2, Exp memory safeTokens) = getExp(possibleTokens.mantissa, collateralRatio);
+
+      uint amountToBorrow = truncate(safeTokens);
+      compoundMoneyMarket.borrow(tokenAddress, amountToBorrow);
     }
     /*   // this contract will now hold borrowed tokens, sweep them to owner */
     giveTokensToOwner();
-  }
-
-  function borrow() private {
-    // find value of token in eth from oracle
-    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
-    uint assetPrice = compoundMoneyMarket.assetPrices(borrowedTokenAddress);
-
-    uint collateralRatio = compoundMoneyMarket.collateralRatio();
-
-    (Error err1, Exp memory possibleTokens) = getExp(msg.value, assetPrice);
-    (Error err2, Exp memory safeTokens) = getExp(possibleTokens.mantissa, collateralRatio);
-
-    uint amountToBorrow = truncate(safeTokens);
-    compoundMoneyMarket.borrow(borrowedTokenAddress, amountToBorrow);
   }
 
   // this contract must receive the tokens to repay before this function will succeed
   function repay() public {
     require(owner == msg.sender);
 
-    EIP20Interface borrowedToken = EIP20Interface(borrowedTokenAddress);
+    EIP20Interface borrowedToken = EIP20Interface(tokenAddress);
     borrowedToken.approve(moneyMarketAddress, uint(-1));
 
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
-    compoundMoneyMarket.repayBorrow(borrowedTokenAddress, uint(-1));
+    compoundMoneyMarket.repayBorrow(tokenAddress, uint(-1));
     compoundMoneyMarket.withdraw(wethAddress, uint(-1));
 
     giveTokensToOwner();
@@ -73,7 +67,7 @@ contract CompoundBorrower is Exponential {
     uint wethBalance = weth.balanceOf(address(this));
     weth.transfer(owner, wethBalance);
 
-    EIP20Interface borrowedToken = EIP20Interface(borrowedTokenAddress);
+    EIP20Interface borrowedToken = EIP20Interface(tokenAddress);
     uint borrowedTokenBalance = borrowedToken.balanceOf(address(this));
     borrowedToken.transfer(owner, borrowedTokenBalance);
   }

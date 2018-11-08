@@ -1,5 +1,6 @@
 pragma solidity ^0.4.24;
 
+
 import "./CompoundBorrower.sol";
 import "./EIP20Interface.sol";
 
@@ -27,7 +28,7 @@ contract TokenBorrowerFactory {
       // if new position, fund and borrow
       borrower = (new CompoundBorrower(msg.sender, TokenAddress, WETHAddress, MoneyMarketAddress));
       borrowerAddress = address(borrower);
-       
+
       borrowers[msg.sender] = borrowerAddress;
       /* // the borrower contract will borrows tokens forward */
       /* // them to the original sender */
