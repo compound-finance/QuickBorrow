@@ -1,0 +1,11 @@
+{
+  "name": "QuickBorrow",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:compound-finance/QuickBorrow.git",
+  "author": "Coburn Berry <coburn@compound.finance>",
+  "license": "MIT",
+  "dependencies": {
+    "solidity-coverage": "^0.5.11"
+  }
+}
