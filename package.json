@@ -5,6 +5,9 @@
   "repository": "git@github.com:compound-finance/QuickBorrow.git",
   "author": "Coburn Berry <coburn@compound.finance>",
   "license": "MIT",
+  "scripts": {
+    "coverage": "./node_modules/.bin/solidity-coverage"
+  },
   "dependencies": {
     "solidity-coverage": "^0.5.11"
   }

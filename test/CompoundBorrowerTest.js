@@ -38,6 +38,32 @@ contract('CompoundBorrower', function([account1, ...accounts]) {
     assert.equal(await borrowToken.balanceOf.call(account1), maxBorrow, "original account now holds borrowed tokens");
   });
 
+  it("adds funds but does not borrow if it holds a borrow balance", async () => {
+    let ethSent = web3.toWei(10, "ether");
+    await web3.eth.sendTransaction({to: borrower.address, from: account1, value: ethSent, gas: 5000000});
+
+    let ogSupplyBalance = await mmm.getSupplyBalance.call(borrower.address, weth.address);
+    assert.equal(ogSupplyBalance.toNumber(), ethSent, "all sent ether gets supplied to money market as weth");
+
+    let ogBorrowBalance = await mmm.getBorrowBalance.call(borrower.address, borrowToken.address);
+    let ogMarketTokenBalance =  await borrowToken.balanceOf.call(mmm.address);
+    let ogBorrowerTokenBalance = await borrowToken.balanceOf.call(borrower.address);
+
+    await web3.eth.sendTransaction({to: borrower.address, from: account1, value: ethSent, gas: 5000000});
+
+    let newBorrowBalance = await mmm.getBorrowBalance.call(borrower.address, borrowToken.address);
+    let newMarketTokenBalance =  await borrowToken.balanceOf.call(mmm.address);
+    let newBorrowerTokenBalance = await borrowToken.balanceOf.call(borrower.address);
+
+    // send more ether, but dont expect to make more borrows
+    assert.equal(newBorrowBalance.toNumber(), ogBorrowBalance.toNumber(), "doesnt receive more tokens");
+    assert.equal(newBorrowerTokenBalance.toNumber(), ogBorrowerTokenBalance.toNumber(), "doesnt borrow more tokens");
+    assert.equal(newMarketTokenBalance.toNumber(), ogMarketTokenBalance.toNumber(), "market holds same tokens as before");
+
+    let finalSupplyBalance = await mmm.getSupplyBalance.call(borrower.address, weth.address);
+    assert.equal(finalSupplyBalance.toNumber(), ethSent * 2, "supply balance is increased");
+  })
+
   it("repays borrowed tokens", async () => {
     let ethSent = web3.toWei(10, "ether");
     let amountBorrowed = 4615; // what ends up being borrowed based on borrow token price
