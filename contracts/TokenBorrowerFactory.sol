@@ -3,13 +3,19 @@ pragma solidity ^0.4.24;
 import "./CompoundBorrower.sol";
 import "./EIP20Interface.sol";
 
-contract BATBorrowerFactory {
-  address constant BATAddress = 0x2;
-  address constant wethAddress = 0x1;
+contract TokenBorrowerFactory {
+  address TokenAddress;
+  address WETHAddress;
+  address MoneyMarketAddress;
+
   uint constant startingCollateralRatio = 2;
   mapping(address => address) public borrowers;
 
-  constructor() public {}
+  constructor(address weth, address token, address moneyMarket) public {
+    WETHAddress = weth;
+    TokenAddress = token;
+    MoneyMarketAddress = moneyMarket;
+  }
 
   // create new position and borrow immediately,
   // or fund an existing position to prevent liquidation.
@@ -19,13 +25,13 @@ contract BATBorrowerFactory {
 
     if (borrowers[msg.sender] == address(0x0)) {
       // if new position, fund and borrow
-      borrower = (new CompoundBorrower(msg.sender, BATAddress, wethAddress, 0x0));
-       borrowerAddress = address(borrower);
-
-       borrowers[msg.sender] = borrowerAddress;
-       // the borrower contract will borrows tokens forward
-       // them to the original sender
-       borrowerAddress.transfer(msg.value);
+      borrower = (new CompoundBorrower(msg.sender, TokenAddress, WETHAddress, MoneyMarketAddress));
+      borrowerAddress = address(borrower);
+       
+      borrowers[msg.sender] = borrowerAddress;
+      /* // the borrower contract will borrows tokens forward */
+      /* // them to the original sender */
+      borrowerAddress.call.value(msg.value)();
     } else {
       // if position already exists, add funds to improve collateral ratio
       borrowerAddress = borrowers[msg.sender];
@@ -41,5 +47,9 @@ contract BATBorrowerFactory {
     borrower.repay();
 
     delete borrowers[msg.sender]; // free to borrow again
+  }
+
+  function findBorrowContract(address borrower) public returns ( address ) {
+    return borrowers[borrower];
   }
 }

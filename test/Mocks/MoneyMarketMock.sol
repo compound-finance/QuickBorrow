@@ -62,7 +62,7 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
 
   // third wave
 
-  function assetPrices(address asset) public view returns (uint) {
+  function assetPrices(address /* asset */) public view returns (uint) {
     return 1444312499999999;
   }
 

@@ -32,7 +32,9 @@ contract CompoundBorrower is Exponential {
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
     compoundMoneyMarket.supply(wethAddress, msg.value);
 
-    borrow();
+    if (compoundMoneyMarket.getBorrowBalance(address(this), borrowedTokenAddress) == 0) {
+      borrow();
+    }
     /*   // this contract will now hold borrowed tokens, sweep them to owner */
     giveTokensToOwner();
   }

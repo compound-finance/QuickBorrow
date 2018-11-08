@@ -208,14 +208,14 @@
     "absolutePath": "/Users/coburn/Compound/QuickBorrow/contracts/WrappedEtherInterface.sol",
     "exportedSymbols": {
       "WrappedEtherInterface": [
-        449
+        1363
       ]
     },
-    "id": 450,
+    "id": 1364,
     "nodeType": "SourceUnit",
     "nodes": [
       {
-        "id": 437,
+        "id": 1351,
         "literals": [
           "solidity",
           "^",
@@ -223,16 +223,16 @@
           ".24"
         ],
         "nodeType": "PragmaDirective",
-        "src": "1:24:4"
+        "src": "1:24:7"
       },
       {
         "absolutePath": "/Users/coburn/Compound/QuickBorrow/contracts/EIP20Interface.sol",
         "file": "./EIP20Interface.sol",
-        "id": 438,
+        "id": 1352,
         "nodeType": "ImportDirective",
-        "scope": 450,
-        "sourceUnit": 393,
-        "src": "27:30:4",
+        "scope": 1364,
+        "sourceUnit": 519,
+        "src": "27:30:7",
         "symbolAliases": [],
         "unitAlias": ""
       },
@@ -242,31 +242,31 @@
             "arguments": null,
             "baseName": {
               "contractScope": null,
-              "id": 439,
+              "id": 1353,
               "name": "EIP20Interface",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 392,
-              "src": "92:14:4",
+              "referencedDeclaration": 518,
+              "src": "92:14:7",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_EIP20Interface_$392",
+                "typeIdentifier": "t_contract$_EIP20Interface_$518",
                 "typeString": "contract EIP20Interface"
               }
             },
-            "id": 440,
+            "id": 1354,
             "nodeType": "InheritanceSpecifier",
-            "src": "92:14:4"
+            "src": "92:14:7"
           }
         ],
         "contractDependencies": [
-          392
+          518
         ],
         "contractKind": "contract",
         "documentation": null,
         "fullyImplemented": false,
-        "id": 449,
+        "id": 1363,
         "linearizedBaseContracts": [
-          449,
-          392
+          1363,
+          518
         ],
         "name": "WrappedEtherInterface",
         "nodeType": "ContractDefinition",
@@ -274,7 +274,7 @@
           {
             "body": null,
             "documentation": null,
-            "id": 443,
+            "id": 1357,
             "implemented": false,
             "isConstructor": false,
             "isDeclaredConst": false,
@@ -282,20 +282,20 @@
             "name": "deposit",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 441,
+              "id": 1355,
               "nodeType": "ParameterList",
               "parameters": [],
-              "src": "128:2:4"
+              "src": "128:2:7"
             },
             "payable": true,
             "returnParameters": {
-              "id": 442,
+              "id": 1356,
               "nodeType": "ParameterList",
               "parameters": [],
-              "src": "145:0:4"
+              "src": "145:0:7"
             },
-            "scope": 449,
-            "src": "112:34:4",
+            "scope": 1363,
+            "src": "112:34:7",
             "stateMutability": "payable",
             "superFunction": null,
             "visibility": "public"
@@ -303,7 +303,7 @@
           {
             "body": null,
             "documentation": null,
-            "id": 448,
+            "id": 1362,
             "implemented": false,
             "isConstructor": false,
             "isDeclaredConst": false,
@@ -311,16 +311,16 @@
             "name": "withdraw",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 446,
+              "id": 1360,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 445,
+                  "id": 1359,
                   "name": "amount",
                   "nodeType": "VariableDeclaration",
-                  "scope": 448,
-                  "src": "168:11:4",
+                  "scope": 1362,
+                  "src": "168:11:7",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -328,10 +328,10 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 444,
+                    "id": 1358,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
-                    "src": "168:4:4",
+                    "src": "168:4:7",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
                       "typeString": "uint256"
@@ -341,40 +341,40 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "167:13:4"
+              "src": "167:13:7"
             },
             "payable": false,
             "returnParameters": {
-              "id": 447,
+              "id": 1361,
               "nodeType": "ParameterList",
               "parameters": [],
-              "src": "187:0:4"
+              "src": "187:0:7"
             },
-            "scope": 449,
-            "src": "150:38:4",
+            "scope": 1363,
+            "src": "150:38:7",
             "stateMutability": "nonpayable",
             "superFunction": null,
             "visibility": "public"
           }
         ],
-        "scope": 450,
-        "src": "58:132:4"
+        "scope": 1364,
+        "src": "58:132:7"
       }
     ],
-    "src": "1:190:4"
+    "src": "1:190:7"
   },
   "legacyAST": {
     "absolutePath": "/Users/coburn/Compound/QuickBorrow/contracts/WrappedEtherInterface.sol",
     "exportedSymbols": {
       "WrappedEtherInterface": [
-        449
+        1363
       ]
     },
-    "id": 450,
+    "id": 1364,
     "nodeType": "SourceUnit",
     "nodes": [
       {
-        "id": 437,
+        "id": 1351,
         "literals": [
           "solidity",
           "^",
@@ -382,16 +382,16 @@
           ".24"
         ],
         "nodeType": "PragmaDirective",
-        "src": "1:24:4"
+        "src": "1:24:7"
       },
       {
         "absolutePath": "/Users/coburn/Compound/QuickBorrow/contracts/EIP20Interface.sol",
         "file": "./EIP20Interface.sol",
-        "id": 438,
+        "id": 1352,
         "nodeType": "ImportDirective",
-        "scope": 450,
-        "sourceUnit": 393,
-        "src": "27:30:4",
+        "scope": 1364,
+        "sourceUnit": 519,
+        "src": "27:30:7",
         "symbolAliases": [],
         "unitAlias": ""
       },
@@ -401,31 +401,31 @@
             "arguments": null,
             "baseName": {
               "contractScope": null,
-              "id": 439,
+              "id": 1353,
               "name": "EIP20Interface",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 392,
-              "src": "92:14:4",
+              "referencedDeclaration": 518,
+              "src": "92:14:7",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_EIP20Interface_$392",
+                "typeIdentifier": "t_contract$_EIP20Interface_$518",
                 "typeString": "contract EIP20Interface"
               }
             },
-            "id": 440,
+            "id": 1354,
             "nodeType": "InheritanceSpecifier",
-            "src": "92:14:4"
+            "src": "92:14:7"
           }
         ],
         "contractDependencies": [
-          392
+          518
         ],
         "contractKind": "contract",
         "documentation": null,
         "fullyImplemented": false,
-        "id": 449,
+        "id": 1363,
         "linearizedBaseContracts": [
-          449,
-          392
+          1363,
+          518
         ],
         "name": "WrappedEtherInterface",
         "nodeType": "ContractDefinition",
@@ -433,7 +433,7 @@
           {
             "body": null,
             "documentation": null,
-            "id": 443,
+            "id": 1357,
             "implemented": false,
             "isConstructor": false,
             "isDeclaredConst": false,
@@ -441,20 +441,20 @@
             "name": "deposit",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 441,
+              "id": 1355,
               "nodeType": "ParameterList",
               "parameters": [],
-              "src": "128:2:4"
+              "src": "128:2:7"
             },
             "payable": true,
             "returnParameters": {
-              "id": 442,
+              "id": 1356,
               "nodeType": "ParameterList",
               "parameters": [],
-              "src": "145:0:4"
+              "src": "145:0:7"
             },
-            "scope": 449,
-            "src": "112:34:4",
+            "scope": 1363,
+            "src": "112:34:7",
             "stateMutability": "payable",
             "superFunction": null,
             "visibility": "public"
@@ -462,7 +462,7 @@
           {
             "body": null,
             "documentation": null,
-            "id": 448,
+            "id": 1362,
             "implemented": false,
             "isConstructor": false,
             "isDeclaredConst": false,
@@ -470,16 +470,16 @@
             "name": "withdraw",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 446,
+              "id": 1360,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 445,
+                  "id": 1359,
                   "name": "amount",
                   "nodeType": "VariableDeclaration",
-                  "scope": 448,
-                  "src": "168:11:4",
+                  "scope": 1362,
+                  "src": "168:11:7",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -487,10 +487,10 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 444,
+                    "id": 1358,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
-                    "src": "168:4:4",
+                    "src": "168:4:7",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
                       "typeString": "uint256"
@@ -500,27 +500,27 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "167:13:4"
+              "src": "167:13:7"
             },
             "payable": false,
             "returnParameters": {
-              "id": 447,
+              "id": 1361,
               "nodeType": "ParameterList",
               "parameters": [],
-              "src": "187:0:4"
+              "src": "187:0:7"
             },
-            "scope": 449,
-            "src": "150:38:4",
+            "scope": 1363,
+            "src": "150:38:7",
             "stateMutability": "nonpayable",
             "superFunction": null,
             "visibility": "public"
           }
         ],
-        "scope": 450,
-        "src": "58:132:4"
+        "scope": 1364,
+        "src": "58:132:7"
       }
     ],
-    "src": "1:190:4"
+    "src": "1:190:7"
   },
   "compiler": {
     "name": "solc",
@@ -528,5 +528,5 @@
   },
   "networks": {},
   "schemaVersion": "2.0.1",
-  "updatedAt": "2018-11-06T00:49:19.809Z"
+  "updatedAt": "2018-11-08T00:35:41.015Z"
 }
