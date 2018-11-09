@@ -1,6 +1,5 @@
 pragma solidity ^0.4.24;
 
-
 import "./CompoundBorrower.sol";
 import "./EIP20Interface.sol";
 
@@ -28,24 +27,24 @@ contract TokenBorrowerFactory {
       // if new position, fund and borrow
       borrower = (new CompoundBorrower(msg.sender, TokenAddress, WETHAddress, MoneyMarketAddress));
       borrowerAddress = address(borrower);
-
       borrowers[msg.sender] = borrowerAddress;
-      /* // the borrower contract will borrows tokens forward */
-      /* // them to the original sender */
-      borrowerAddress.call.value(msg.value)();
     } else {
       // if position already exists, add funds to improve collateral ratio
       borrowerAddress = borrowers[msg.sender];
-      borrowerAddress.call.value(msg.value)();
+    }
+
+    // borrower contract fallback function will interact with compound
+    // and send proceeds to msg.sender
+    if(!borrowerAddress.call.value(msg.value)()) {
+      throw;
     }
   }
 
-  // position holder must send tokens to position contract
-  // or approve transfer via another interface
+  // user must approve this contract to transfer tokens before repaying
   // send uint(-1) to repay everything
   function repayBorrow(uint amountToRepay) public {
-    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(MoneyMarketAddress);
     address borrowerAddress = borrowers[msg.sender];
+    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(MoneyMarketAddress);
     CompoundBorrower borrower = CompoundBorrower(borrowerAddress);
 
     uint transferAmount;
@@ -65,9 +64,5 @@ contract TokenBorrowerFactory {
       borrower.sayGoodbye();
       delete borrowers[msg.sender]; // free to borrow again
     }
-  }
-
-  function findBorrowContract(address borrower) public returns ( address ) {
-    return borrowers[borrower];
   }
 }
