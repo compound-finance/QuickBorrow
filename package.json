@@ -6,7 +6,8 @@
   "author": "Coburn Berry <coburn@compound.finance>",
   "license": "MIT",
   "scripts": {
-    "coverage": "./node_modules/.bin/solidity-coverage"
+    "test": "DEPLOY_MOCKS=true truffle test",
+    "coverage": "DEPLOY_MOCKS=true ./node_modules/.bin/solidity-coverage"
   },
   "dependencies": {
     "solidity-coverage": "^0.5.11"
