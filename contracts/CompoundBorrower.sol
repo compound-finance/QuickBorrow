@@ -3,9 +3,9 @@ pragma solidity ^0.4.24;
 import "./EIP20Interface.sol";
 import "./WrappedEtherInterface.sol";
 import "./MoneyMarketAccountInterface.sol";
-import "./Exponential.sol";
 
-contract CompoundBorrower is Exponential {
+contract CompoundBorrower {
+  uint constant expScale = 10**18;
   address tokenAddress;
   address moneyMarketAddress;
   address creator;
@@ -35,14 +35,12 @@ contract CompoundBorrower is Exponential {
     // otherwise, hold weth as supply to have healthy collateral ratio
     if (compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress) == 0) {
       // find value of token in eth from oracle
-      uint assetPrice = compoundMoneyMarket.assetPrices(tokenAddress);
+      uint256 assetPrice = compoundMoneyMarket.assetPrices(tokenAddress);
 
       uint collateralRatio = compoundMoneyMarket.collateralRatio();
 
-      (Error _err1, Exp memory possibleTokens) = getExp(msg.value, assetPrice);
-      (Error _err2, Exp memory safeTokens) = getExp(possibleTokens.mantissa, collateralRatio);
+      uint amountToBorrow = (msg.value * expScale)/ (assetPrice * collateralRatio);
 
-      uint amountToBorrow = truncate(safeTokens);
       compoundMoneyMarket.borrow(tokenAddress, amountToBorrow);
     }
     /*   // this contract will now hold borrowed tokens, sweep them to owner */

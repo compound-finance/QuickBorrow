@@ -83,9 +83,10 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
     await factory.repayBorrow(100, {from: account1});
 
     let finalBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
+    let finalAccountBalance = await token.balanceOf.call(account1);
 
-    assert.equal(finalBorrowBalance, ogBorrowBalance.toNumber() - 100, "paid off 100");
-    assert.equal(await token.balanceOf.call(account1), 4900, "a few tokens are left");
+    assert.equal(finalBorrowBalance.toNumber(), ogBorrowBalance.toNumber() - 100, "paid off 100");
+    assert.equal(finalAccountBalance.toNumber(), 4900, "a few tokens are left");
   });
 
 
