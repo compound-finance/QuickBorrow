@@ -21,6 +21,9 @@ contract CompoundBorrower {
 
     WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
     weth.approve(moneyMarketAddress, uint(-1));
+
+    EIP20Interface borrowedToken = EIP20Interface(tokenAddress);
+    borrowedToken.approve(moneyMarketAddress, uint(-1));
   }
 
   // turn all received ether into weth and fund it to compound
@@ -51,9 +54,6 @@ contract CompoundBorrower {
   // TokenBorrowerFactory will transfer the tokens needed
   function repay(uint amountToRepay) external {
     require(creator == msg.sender);
-
-    EIP20Interface borrowedToken = EIP20Interface(tokenAddress);
-    borrowedToken.approve(moneyMarketAddress, amountToRepay);
 
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
     compoundMoneyMarket.repayBorrow(tokenAddress, amountToRepay);
