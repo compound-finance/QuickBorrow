@@ -18,6 +18,9 @@ contract CompoundBorrower {
     tokenAddress = _tokenAddress;
     wethAddress = _wethAddress;
     moneyMarketAddress = _moneyMarketAddress;
+
+    WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
+    weth.approve(moneyMarketAddress, uint(-1));
   }
 
   // turn all received ether into weth and fund it to compound
@@ -25,7 +28,6 @@ contract CompoundBorrower {
     require(creator == msg.sender);
 
     WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
-    weth.approve(moneyMarketAddress, uint(-1));
     weth.deposit.value(msg.value)();
 
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
@@ -36,9 +38,7 @@ contract CompoundBorrower {
     if (compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress) == 0) {
       // find value of token in eth from oracle
       uint256 assetPrice = compoundMoneyMarket.assetPrices(tokenAddress);
-
       uint collateralRatio = compoundMoneyMarket.collateralRatio();
-
       uint amountToBorrow = (msg.value * expScale)/ (assetPrice * collateralRatio);
 
       compoundMoneyMarket.borrow(tokenAddress, amountToBorrow);
