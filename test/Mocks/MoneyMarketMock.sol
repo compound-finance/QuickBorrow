@@ -25,9 +25,9 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
 
     uint withdrawAmount;
     if (amount == uint(-1)) {
-      withdrawAmount = min(token.balanceOf(msg.sender), supplyBalance);
-    } else {
       withdrawAmount = supplyBalance;
+    } else {
+      withdrawAmount = min(amount, supplyBalance);
     }
 
     supplyBalances[msg.sender][asset] -= withdrawAmount;

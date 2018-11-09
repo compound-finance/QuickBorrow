@@ -36,18 +36,35 @@ contract TokenBorrowerFactory {
     } else {
       // if position already exists, add funds to improve collateral ratio
       borrowerAddress = borrowers[msg.sender];
-      borrowerAddress.transfer(msg.value);
+      borrowerAddress.call.value(msg.value)();
     }
   }
 
   // position holder must send tokens to position contract
   // or approve transfer via another interface
-  function exitPosition() public {
-    CompoundBorrower borrower = CompoundBorrower(borrowers[msg.sender]);
+  // send uint(-1) to repay everything
+  function repayBorrow(uint amountToRepay) public {
+    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(MoneyMarketAddress);
+    address borrowerAddress = borrowers[msg.sender];
+    CompoundBorrower borrower = CompoundBorrower(borrowerAddress);
 
-    borrower.repay();
+    uint transferAmount;
+    if (amountToRepay == uint(-1)) {
+      transferAmount = compoundMoneyMarket.getBorrowBalance(borrowerAddress, TokenAddress);
+    } else {
+      transferAmount = amountToRepay;
+    }
 
-    delete borrowers[msg.sender]; // free to borrow again
+    EIP20Interface token = EIP20Interface(TokenAddress);
+    token.transferFrom(msg.sender, borrowerAddress, transferAmount);
+
+    borrower.repay(amountToRepay);
+
+    uint remainingBorrow = compoundMoneyMarket.getBorrowBalance(borrowerAddress, TokenAddress);
+    if ( remainingBorrow == uint(0) ) {
+      borrower.sayGoodbye();
+      delete borrowers[msg.sender]; // free to borrow again
+    }
   }
 
   function findBorrowContract(address borrower) public returns ( address ) {

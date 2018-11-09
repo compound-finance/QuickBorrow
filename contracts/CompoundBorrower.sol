@@ -22,6 +22,8 @@ contract CompoundBorrower is Exponential {
 
   // turn all received ether into weth and fund it to compound
   function () payable public {
+    require(creator == msg.sender);
+
     WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
     weth.approve(moneyMarketAddress, uint(-1));
     weth.deposit.value(msg.value)();
@@ -48,21 +50,34 @@ contract CompoundBorrower is Exponential {
   }
 
   // this contract must receive the tokens to repay before this function will succeed
-  function repay() public {
-    require(owner == msg.sender);
+  // TokenBorrowerFactory will transfer the tokens needed
+  function repay(uint amountToRepay) external {
+    require(creator == msg.sender);
 
     EIP20Interface borrowedToken = EIP20Interface(tokenAddress);
-    borrowedToken.approve(moneyMarketAddress, uint(-1));
+    borrowedToken.approve(moneyMarketAddress, amountToRepay);
 
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
-    compoundMoneyMarket.repayBorrow(tokenAddress, uint(-1));
+    compoundMoneyMarket.repayBorrow(tokenAddress, amountToRepay);
     compoundMoneyMarket.withdraw(wethAddress, uint(-1));
 
     giveTokensToOwner();
-    /* selfDestructIfEmpty(); and send to Owner*/
   }
 
+  // withdraw any weth, send any tokens to owner, selfdestruct any eth to owner
+  function sayGoodbye() external {
+    require(creator == msg.sender);
+
+    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
+    compoundMoneyMarket.withdraw(wethAddress, uint(-1));
+
+    giveTokensToOwner();
+    selfdestruct(owner);
+  }
+
+  // withdraw max weth, send it and any borrowed tokens to owner
   function giveTokensToOwner() private {
+
     EIP20Interface weth = EIP20Interface(wethAddress);
     uint wethBalance = weth.balanceOf(address(this));
     weth.transfer(owner, wethBalance);
