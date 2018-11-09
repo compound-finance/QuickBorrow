@@ -90,7 +90,7 @@ contract('CompoundBorrower', function([root, account1, ...accounts]) {
 
     await departingBorrower.sayGoodbye();
 
-    assert.equal(await weth.balanceOf(root), 5000, "has balance from borrower");
-    assert.equal(await borrowToken.balanceOf(root), 5000, "has balance from borrower");
+    assert.equal(await weth.balanceOf.call(root), 5000, "has balance from borrower");
+    assert.equal(await borrowToken.balanceOf.call(root), 5000, "has balance from borrower");
   });
 });
