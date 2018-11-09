@@ -35,9 +35,7 @@ contract TokenBorrowerFactory {
 
     // borrower contract fallback function will interact with compound
     // and send proceeds to msg.sender
-    if(!borrowerAddress.call.value(msg.value)()) {
-      throw;
-    }
+    require(borrowerAddress.call.value(msg.value)());
   }
 
   // user must approve this contract to transfer tokens before repaying
