@@ -31,7 +31,7 @@ contract('CompoundBorrower', function([root, account1, ...accounts]) {
     assert.equal(supplyBalance.toNumber(), tenEth, "all sent ether gets supplied to money market as weth");
 
     // magic number given hard coded mock price for this token
-    const maxBorrow = 4615;
+    const maxBorrow = 315;
     var borrowBalance = await mmm.getBorrowBalance.call(borrower.address, borrowToken.address);
 
     assert.equal(borrowBalance.toNumber(), maxBorrow, "borrows some tokens");
@@ -63,8 +63,8 @@ contract('CompoundBorrower', function([root, account1, ...accounts]) {
   it("repays borrowed tokens", async () => {
     await borrowToken.setBalance(account1, 5000);
 
-    let amountBorrowed = 4615; // what ends up being borrowed based on borrow token price
-    assert.equal(await borrowToken.balanceOf.call(mmm.address), initialLiquidity - amountBorrowed, "money market has lent some tokens");
+    let amountBorrowed = 315; // what ends up being borrowed based on borrow token price
+    assert.equal((await borrowToken.balanceOf.call(mmm.address)).toNumber(), initialLiquidity - amountBorrowed, "money market has lent some tokens");
 
     // sent tokens to quick borrow contract form owner before repaying
     await borrowToken.transfer(borrower.address, 5000, {from: account1});

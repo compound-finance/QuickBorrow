@@ -31,7 +31,7 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
     assert.equal(supplyBalance.toNumber(), ethSent, "all sent ether gets supplied to money market as weth");
 
     let borrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
-    assert.equal(borrowBalance.toNumber(), 4615, "borrows a token");
+    assert.equal(borrowBalance.toNumber(), 315, "borrows a token");
   });
 
   it("sends ether to existing borrower address if one exists", async () => {
@@ -66,8 +66,8 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
     await token.approve(factory.address, -1, {from: account1});
     await factory.repayBorrow(-1, {from: account1});
 
-    assert.equal(await token.balanceOf.call(account1), 385, "a few tokens are left after repaying max");
-    assert.equal(await weth.balanceOf.call(account1), ethSent, "got collateral back");
+    assert.equal((await token.balanceOf.call(account1)).toNumber(), 4685, "a few tokens are left after repaying max");
+    assert.equal(( await weth.balanceOf.call(account1) ).toNumber(), ethSent, "got collateral back");
   });
 
   it("can repay part of loan", async () => {

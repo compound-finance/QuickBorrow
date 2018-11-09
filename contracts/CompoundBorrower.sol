@@ -39,12 +39,17 @@ contract CompoundBorrower {
     // if no borrow yet, borrow a safe amount of tokens
     // otherwise, hold weth as supply to have healthy collateral ratio
     if (compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress) == 0) {
-      // find value of token in eth from oracle
-      uint256 assetPrice = compoundMoneyMarket.assetPrices(tokenAddress);
-      uint collateralRatio = compoundMoneyMarket.collateralRatio();
-      uint amountToBorrow = (msg.value * expScale)/ (assetPrice * collateralRatio);
+      uint assetPrice = compoundMoneyMarket.assetPrices(tokenAddress);
+      int accountLiquidity = compoundMoneyMarket.getAccountLiquidity(address(this));
 
-      compoundMoneyMarket.borrow(tokenAddress, amountToBorrow);
+      require(accountLiquidity > 0);
+
+      // x ETH / y ( TKN / ETH ) = x/y TKN
+      int maxBorrow = accountLiquidity / int( assetPrice );
+      // borrowing everything would put user almost immediately at risk, only take 90% of what is possible
+      uint maxBorrowWithBuffer = uint(maxBorrow * 9 / 10);
+
+      compoundMoneyMarket.borrow(tokenAddress, maxBorrowWithBuffer);
     }
     /*   // this contract will now hold borrowed tokens, sweep them to owner */
     giveTokensToOwner();
