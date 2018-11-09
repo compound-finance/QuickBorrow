@@ -25,7 +25,7 @@ contract TokenBorrowerFactory {
 
     if (borrowers[msg.sender] == address(0x0)) {
       // if new position, fund and borrow
-      borrower = (new CompoundBorrower(msg.sender, TokenAddress, WETHAddress, MoneyMarketAddress));
+      borrower = new CompoundBorrower(msg.sender, TokenAddress, WETHAddress, MoneyMarketAddress);
       borrowerAddress = address(borrower);
       borrowers[msg.sender] = borrowerAddress;
     } else {
