@@ -11,7 +11,8 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
   let factory;
   let ethSent;
 
-  const initialLiquidity = 10000000;
+  const initialLiquidity = 10000 * 10**18;
+  const amountBorrowed = 210 * 10**18; // what ends up being borrowed based on borrow token price
 
   beforeEach(async function () {
     mmm = await MoneyMarket_.deployed();
@@ -32,7 +33,7 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
     assert.equal(supplyBalance.toNumber(), ethSent, "all sent ether gets supplied to money market as weth");
 
     let borrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
-    assert.equal(borrowBalance.toNumber(), 210, "borrows a token");
+    assert.equal(borrowBalance.toNumber(), amountBorrowed, "borrows a token");
   });
 
   it("sends ether to existing borrower address if one exists", async () => {
@@ -50,8 +51,9 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
   });
 
   it("can repay entire loan", async () => {
-    await token.setBalance(account1, 5000);
-    assert.equal(await token.balanceOf.call(account1), 5000, "ready to pay back my debts");
+    const startingBalance = 5000 * 10**18;
+    await token.setBalance(account1, startingBalance);
+    assert.equal(await token.balanceOf.call(account1), startingBalance, "ready to pay back my debts");
     assert.equal(await weth.balanceOf.call(account1), 0, "then I get collateral back");
 
     let borrower = await factory.borrowers.call(account1);
@@ -61,12 +63,13 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
     await token.approve(factory.address, -1, {from: account1});
     await factory.repayBorrow(-1, {from: account1});
 
-    assert.equal((await token.balanceOf.call(account1)).toNumber(), 4790, "a few tokens are left after repaying max");
+    assert.equal((await token.balanceOf.call(account1)).toNumber(), startingBalance - amountBorrowed, "a few tokens are left after repaying max");
     assert.equal(( await weth.balanceOf.call(account1) ).toNumber(), ethSent, "got collateral back");
   });
 
   it("can repay part of loan", async () => {
-    await token.setBalance(account1, 5000);
+    const startingBalance = 5000 * 10**18;
+    await token.setBalance(account1, startingBalance);
 
     let borrower = await factory.borrowers.call(account1);
     let ogSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
@@ -79,7 +82,7 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
     let finalAccountBalance = await token.balanceOf.call(account1);
 
     assert.equal(finalBorrowBalance.toNumber(), ogBorrowBalance.toNumber() - 100, "paid off 100");
-    assert.equal(finalAccountBalance.toNumber(), 4900, "a few tokens are left");
+    assert.equal(finalAccountBalance.toNumber(), startingBalance - 100, "a few tokens are left");
   });
 
 

@@ -9,9 +9,9 @@ contract('CompoundBorrower', function([root, account1, ...accounts]) {
   let token;
   let borrower;
   let oneEth = web3.toWei(1, "ether");
-  let amountBorrowed = 210; // what ends up being borrowed based on borrow token price
+  let amountBorrowed = 210 * 10**18; // what ends up being borrowed based on borrow token price
 
-  const initialLiquidity = 10000000;
+  const initialLiquidity = 10000 * 10**18;
 
   beforeEach(async function () {
     mmm = await MoneyMarket_.deployed();
@@ -60,17 +60,18 @@ contract('CompoundBorrower', function([root, account1, ...accounts]) {
   });
 
   it("repays borrowed tokens", async () => {
-    await token.setBalance(account1, 5000);
+    const startingBalance = 5000 * 10**18;
+    await token.setBalance(account1, startingBalance);
 
     assert.equal((await token.balanceOf.call(mmm.address)).toNumber(), initialLiquidity - amountBorrowed, "money market has lent some tokens");
 
     // sent tokens to quick borrow contract form owner before repaying
-    await token.transfer(borrower.address, 5000, {from: account1});
+    await token.transfer(borrower.address, startingBalance, {from: account1});
     assert.notEqual(await token.balanceOf.call(borrower.address), 0, "empty borrower contract");
     await borrower.repay(-1, {from: root, gas: 5000000});
 
     assert.equal(await token.balanceOf.call(borrower.address), 0, "empty borrower contract");
-    assert.equal(await token.balanceOf.call(account1), 5000 - amountBorrowed, "owner receives balance not needed to pay money market");
+    assert.equal(await token.balanceOf.call(account1), startingBalance - amountBorrowed, "owner receives balance not needed to pay money market");
     assert.equal(await token.balanceOf.call(mmm.address), initialLiquidity, "money market has its tokens back");
     assert.equal(await weth.balanceOf.call(account1), oneEth, "gets original weth back");
   });

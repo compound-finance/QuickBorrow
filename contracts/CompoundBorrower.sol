@@ -51,7 +51,7 @@ contract CompoundBorrower {
       // borrowing everything would put user almost immediately at risk, only take 90% of what is possible
       uint maxBorrowWithBuffer = uint(maxBorrow * 9 / 10);
 
-      compoundMoneyMarket.borrow(tokenAddress, maxBorrowWithBuffer);
+      compoundMoneyMarket.borrow(tokenAddress, (maxBorrowWithBuffer * expScale));
     }
     /*   // this contract will now hold borrowed tokens, sweep them to owner */
     giveTokensToOwner();
