@@ -24,7 +24,7 @@ contract('CompoundBorrower', function([root, account1, ...accounts]) {
     await token.setBalance(account1, 0);
 
     // root stands in for borrow factory in this context
-    await web3.eth.sendTransaction({to: borrower.address, from: root, value: oneEth, gas: 5000000});
+    await borrower.fund({value: oneEth, gas: 5000000});
   });
 
   it("supplies all sent ether to moneymarket as weth and borrows max of borrow token", async () => {
@@ -44,7 +44,7 @@ contract('CompoundBorrower', function([root, account1, ...accounts]) {
     let ogMarketTokenBalance =  await token.balanceOf.call(mmm.address);
     let ogBorrowerTokenBalance = await token.balanceOf.call(borrower.address);
 
-    await web3.eth.sendTransaction({to: borrower.address, from: root, value: oneEth, gas: 5000000});
+    await borrower.fund({from: root, value: oneEth});
 
     let newSupplyBalance = await mmm.getSupplyBalance.call(borrower.address, weth.address);
     let newBorrowBalance = await mmm.getBorrowBalance.call(borrower.address, token.address);
@@ -66,30 +66,22 @@ contract('CompoundBorrower', function([root, account1, ...accounts]) {
     assert.equal((await token.balanceOf.call(mmm.address)).toNumber(), initialLiquidity - amountBorrowed, "money market has lent some tokens");
 
     // sent tokens to quick borrow contract form owner before repaying
-    await token.transfer(borrower.address, startingBalance, {from: account1});
-    assert.notEqual(await token.balanceOf.call(borrower.address), 0, "empty borrower contract");
+    await token.transfer(borrower.address, amountBorrowed, {from: account1});
+    assert.notEqual(( await token.balanceOf.call(borrower.address) ).toNumber(), 0, "empty borrower contract");
     await borrower.repay(-1, {from: root, gas: 5000000});
 
-    assert.equal(await token.balanceOf.call(borrower.address), 0, "empty borrower contract");
-    assert.equal(await token.balanceOf.call(account1), startingBalance - amountBorrowed, "owner receives balance not needed to pay money market");
     assert.equal(await token.balanceOf.call(mmm.address), initialLiquidity, "money market has its tokens back");
-    assert.equal(await weth.balanceOf.call(account1), oneEth, "gets original weth back");
   });
 
   it("returns held tokens and eth to owner when saying goodbye", async () => {
-    // cant check returning the ether since all payments get converted to weth ? any way to give a balance to this contract without triggering fallback?
+    let theAccount = accounts[2];
+    let startingBalance = (await web3.eth.getBalance(theAccount)).toNumber();
+    let departingBorrower = await CompoundBorrower_.new(theAccount, token.address, weth.address, mmm.address);
 
-    let departingBorrower = await CompoundBorrower_.new(root, token.address, weth.address, mmm.address);
-
-    await token.setBalance(departingBorrower.address, 5000);
-    await weth.setBalance(departingBorrower.address, 5000);
-
-    await token.setBalance(root, 0);
-    await weth.setBalance(root, 0);
-
+    await weth.setBalance(departingBorrower.address, oneEth);
     await departingBorrower.sayGoodbye();
 
-    assert.equal(await weth.balanceOf.call(root), 5000, "has balance from borrower");
-    assert.equal(await token.balanceOf.call(root), 5000, "has balance from borrower");
+    var finalBalance = await web3.eth.getBalance(theAccount);
+    assert.equal(finalBalance.toNumber() , startingBalance + (+oneEth), "gets eth back");
   });
 });
