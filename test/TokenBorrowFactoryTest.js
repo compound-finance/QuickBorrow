@@ -52,21 +52,23 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
   });
 
   it("can repay entire loan", async () => {
-    await token.setBalance(account1, startingBalance);
-    await token.approve(factory.address, -1, {from: account1});
+    let account = accounts[4];
+    await web3.eth.sendTransaction({to: factory.address, from: account, value: oneEth, gas: 8000000});
+    await token.setBalance(account, startingBalance);
+    await token.approve(factory.address, -1, {from: account});
 
-    assert.equal(await token.balanceOf.call(account1), startingBalance, "ready to pay back my debts");
+    assert.equal(await token.balanceOf.call(account), startingBalance, "ready to pay back my debts");
 
-    let borrower = await factory.borrowers.call(account1);
+    let borrower = await factory.borrowers.call(account);
     let ogSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
     let ogBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
 
-    let startingEthBalance = await web3.eth.getBalance(account1);
-    let receipt = await factory.repayBorrow(-1, {from: account1});
+    let startingEthBalance = await web3.eth.getBalance(account);
+    let receipt = await factory.repayBorrow(-1, {from: account});
     let totalGasCost = await ethSpentOnGas(receipt);
 
-    assert.equal((await token.balanceOf.call(account1)).toNumber(), startingBalance - amountBorrowed, "a few tokens are left after repaying max");
-    let finalEthBalance = await web3.eth.getBalance(account1);
+    assert.equal((await token.balanceOf.call(account)).toNumber(), startingBalance - amountBorrowed, "a few tokens are left after repaying max");
+    let finalEthBalance = await web3.eth.getBalance(account);
     assert.equal(finalEthBalance.toNumber(), startingEthBalance.toNumber() - totalGasCost + (+oneEth), "has eth back");
   });
 
