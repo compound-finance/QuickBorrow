@@ -42,7 +42,7 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
     let ogSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
     let ogBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
 
-    await web3.eth.sendTransaction({to: factory.address, from: account1, value: oneEth});
+    await web3.eth.sendTransaction({to: factory.address, from: account1, value: oneEth, gas: 8000000});
 
     let finalSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
     assert.equal(finalSupplyBalance.toNumber(), ogSupplyBalance.toNumber() * 2, "ether sent to existing borrower is added to supply");
@@ -71,17 +71,19 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
   });
 
   it("can repay part of loan", async () => {
-    await token.setBalance(account1, startingBalance);
+    let account2 = accounts[3];
+    await web3.eth.sendTransaction({to: factory.address, from: account2, value: oneEth, gas: 8000000});
+    await token.setBalance(account2, startingBalance);
 
-    let borrower = await factory.borrowers.call(account1);
+    let borrower = await factory.borrowers.call(account2);
     let ogSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
     let ogBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
 
-    await token.approve(factory.address, -1, {from: account1});
-    await factory.repayBorrow(100, {from: account1});
+    await token.approve(factory.address, -1, {from: account2});
+    await factory.repayBorrow(100, {from: account2});
 
     let finalBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
-    let finalAccountBalance = await token.balanceOf.call(account1);
+    let finalAccountBalance = await token.balanceOf.call(account2);
 
     assert.equal(finalBorrowBalance.toNumber(), ogBorrowBalance.toNumber() - 100, "paid off 100");
     assert.equal(finalAccountBalance.toNumber(), startingBalance - 100, "a few tokens are left");

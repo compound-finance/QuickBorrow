@@ -29,14 +29,13 @@ contract CompoundBorrower {
   event Log(uint x);
   // turn all received ether into weth and fund it to compound
   function fund() payable public {
-    emit Log(0);
     require(creator == msg.sender);
-    emit Log(1);
 
     WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
     weth.deposit.value(msg.value)();
 
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
+    emit Log(msg.value);
     compoundMoneyMarket.supply(wethAddress, msg.value);
 
     // if no borrow yet, borrow a safe amount of tokens
