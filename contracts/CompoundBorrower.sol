@@ -41,11 +41,13 @@ contract CompoundBorrower {
     if (compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress) == 0) {
       uint assetPrice = compoundMoneyMarket.assetPrices(tokenAddress);
       int accountLiquidity = compoundMoneyMarket.getAccountLiquidity(address(this));
+      uint collateralRatio = compoundMoneyMarket.collateralRatio();
+
 
       require(accountLiquidity > 0);
 
       // x ETH / y ( TKN / ETH ) = x/y TKN
-      int maxBorrow = accountLiquidity / int( assetPrice );
+      int maxBorrow = (accountLiquidity * int( expScale )) / int(assetPrice * collateralRatio);
       // borrowing everything would put user almost immediately at risk, only take 90% of what is possible
       uint maxBorrowWithBuffer = uint(maxBorrow * 9 / 10);
 

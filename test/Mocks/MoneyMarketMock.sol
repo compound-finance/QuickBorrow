@@ -67,13 +67,13 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
   }
 
   function getAccountLiquidity(address account) public view returns (int) {
-    /* roughly, all ( supply balances) - ( all borrow balance * 1.5 ) */
+    /* roughly, ( all supply balances) - ( all borrow balance * 1.5 ) */
     /* return supplyBalances[account][asset] - (borrowBalances[account][asset] * 1.5); */
+
     return 507797233420262814;
   }
 
   uint public collateralRatio = 1500000000000000000;
-
 
   function min(uint a, uint b) pure internal returns (uint) {
     if (a < b) {
