@@ -26,8 +26,10 @@ contract CompoundBorrower {
     borrowedToken.approve(moneyMarketAddress, uint(-1));
   }
 
-  event Log(uint x);
-  // turn all received ether into weth and fund it to compound
+  event L(string l);
+  event Log(int x);
+  event Lo(uint y);
+  /* @dev sent from borrow factory, wraps eth and supplies weth, then borrows the token at address supplied in constructor */
   function fund() payable public {
     require(creator == msg.sender);
 
@@ -35,26 +37,20 @@ contract CompoundBorrower {
     weth.deposit.value(msg.value)();
 
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
-    emit Log(msg.value);
     compoundMoneyMarket.supply(wethAddress, msg.value);
 
-    // if no borrow yet, borrow a safe amount of tokens
-    // otherwise, we are only adding collateral to have healthy ratio
-    if (compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress) == 0) {
-      emit Log(2);
-      emit Log(weth.balanceOf(address(this)));
+    borrowAvailableTokens();
+  }
+
+  function borrowAvailableTokens() {
+    int excessLiquidity = calculateExcessLiquidity();
+    if (excessLiquidity > 0) {
+      MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
       uint assetPrice = compoundMoneyMarket.assetPrices(tokenAddress);
-      int accountLiquidity = compoundMoneyMarket.getAccountLiquidity(address(this));
-      uint collateralRatio = compoundMoneyMarket.collateralRatio();
-
-      require(accountLiquidity > 0);
-
-      // x ETH / y ( TKN / ETH ) = x/y TKN
-      int maxBorrow = (accountLiquidity * int( expScale )) / int(assetPrice * collateralRatio);
-      // borrowing everything would put user almost immediately at risk, only take 90% of what is possible
-      uint maxBorrowWithBuffer = uint(maxBorrow * 9 / 10);
-
-      compoundMoneyMarket.borrow(tokenAddress, (maxBorrowWithBuffer * expScale));
+      /* assetPrice contains expScale, so must be factored out */
+      /* by including it in numerator */
+      uint targetBorrow = uint(excessLiquidity) * expScale / assetPrice;
+      compoundMoneyMarket.borrow(tokenAddress, targetBorrow);
 
       /* this contract will now hold borrowed tokens, sweep them to owner */
       EIP20Interface borrowedToken = EIP20Interface(tokenAddress);
@@ -63,30 +59,67 @@ contract CompoundBorrower {
     }
   }
 
-  // this contract must receive the tokens to repay before this function will succeed
-  // TokenBorrowerFactory will transfer the tokens needed
-  function repay(uint amountToRepay) external {
+
+  /* @dev the factory contract will transfer tokens necessary to repay */
+  function repay() external {
     require(creator == msg.sender);
 
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
-    compoundMoneyMarket.repayBorrow(tokenAddress, amountToRepay);
+    uint borrowBalance = compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress);
+    emit L("about to repay");
+    emit Lo(borrowBalance);
+    compoundMoneyMarket.repayBorrow(tokenAddress, uint(-1));
+
+    withdrawExcessSupply();
   }
 
-
-  // withdraw any weth, send any tokens to owner, selfdestruct any eth to owner
-  function sayGoodbye() external {
-    require(creator == msg.sender);
-
+  function withdrawExcessSupply() private returns ( uint ) {
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
-    compoundMoneyMarket.withdraw(wethAddress, uint(-1));
+    int excessLiquidity = calculateExcessLiquidity();
+    if (excessLiquidity > 0) {
+      uint amountToWithdraw;
+      uint borrowBalance = compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress);
+      emit L("withdrawing eth");
+      if (borrowBalance == 0) {
+        emit L("myeh");
+        amountToWithdraw = uint(-1);
+      } else {
+        emit L("nyoh");
+        amountToWithdraw = uint( excessLiquidity );
+      }
+      emit Lo(borrowBalance);
+      emit Lo(amountToWithdraw);
 
-    WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
-    uint wethBalance = weth.balanceOf(address(this));
-    weth.withdraw(wethBalance);
+      compoundMoneyMarket.withdraw(wethAddress, amountToWithdraw);
 
-    selfdestruct(owner);
+      WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
+      uint wethBalance = weth.balanceOf(address(this));
+      weth.withdraw(wethBalance);
+      owner.transfer(address(this).balance);
+    }
+  }
+
+  function calculateExcessLiquidity() private returns ( int ) {
+    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
+    (uint status, uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
+    /* require(status == 0); */
+    emit L("total supply");
+    emit Log(int(totalSupply));
+    int totalPossibleBorrow = int(totalSupply * 4 / 7);
+    emit L("total borrow");
+    emit Log(int(totalBorrow));
+    emit L("total possible borrow");
+    emit Log(int(totalPossibleBorrow));
+    int liquidity = int( totalPossibleBorrow ) - int( totalBorrow );
+    emit L("liquidity");
+    emit Log(liquidity);
+    return liquidity;
   }
 
   // need to accept eth for withdrawing weth
   function () public payable {}
 }
+
+
+
+

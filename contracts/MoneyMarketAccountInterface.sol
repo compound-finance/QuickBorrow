@@ -17,7 +17,9 @@ contract MoneyMarketAccountInterface {
   //third wave
   function assetPrices(address asset) public view returns (uint);
 
-  function getAccountLiquidity(address account) public view returns (int);
 
   uint public collateralRatio;
+  address[] public collateralMarkets;
+
+  function calculateAccountValues(address account) public view returns (uint, uint, uint);
 }

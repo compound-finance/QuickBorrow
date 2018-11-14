@@ -7,18 +7,24 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
   mapping(address => mapping(address => uint)) public supplyBalances;
   mapping(address => mapping(address => uint)) public borrowBalances;
 
+
+  mapping(address => uint ) private fakePriceOracle;
+
   function borrow(address asset, uint amount) public returns (uint) {
     borrowBalances[msg.sender][asset] += amount;
     EIP20Interface(asset).transfer(msg.sender, amount);
+
     return 0;
   }
 
   function supply(address asset, uint amount) public returns (uint) {
     supplyBalances[msg.sender][asset] += amount;
     EIP20Interface(asset).transferFrom(msg.sender, address(this), amount);
+
     return 0;
   }
 
+  event W(uint x);
   function withdraw(address asset, uint amount) public returns (uint) {
     EIP20Interface token = EIP20Interface(asset);
     uint supplyBalance = supplyBalances[msg.sender][asset];
@@ -29,25 +35,37 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
     } else {
       withdrawAmount = min(amount, supplyBalance);
     }
+    emit W(withdrawAmount);
 
     supplyBalances[msg.sender][asset] -= withdrawAmount;
     token.transfer(msg.sender, withdrawAmount);
+
     return 0;
   }
 
+  event B(string x);
+  event C(uint x);
   function repayBorrow(address asset, uint amount) public returns (uint) {
     EIP20Interface token = EIP20Interface(asset);
     uint borrowBalance = borrowBalances[msg.sender][asset];
 
     uint repayAmount;
     if (amount == uint(-1)) {
+      emit B("repay options");
+      emit B("token balance");
+      emit C(token.balanceOf(msg.sender));
+      emit B("borrow balance");
+      emit C(borrowBalance);
       repayAmount = min(token.balanceOf(msg.sender), borrowBalance);
     } else {
       repayAmount = amount;
     }
+    emit B("chosen repay");
+    emit C(repayAmount);
 
     borrowBalances[msg.sender][asset] -= repayAmount;
     token.transferFrom(msg.sender, address(this), repayAmount);
+
     return 0;
   }
   // second wave
@@ -62,15 +80,31 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
 
   // third wave
 
-  function assetPrices(address /* asset */) public view returns (uint) {
-    return 1444312499999999;
+  function assetPrices(address asset) public view returns (uint) {
+    return fakePriceOracle[asset];
   }
 
-  function getAccountLiquidity(address account) public view returns (int) {
-    /* roughly, ( all supply balances) - ( all borrow balance * 1.5 ) */
-    /* return supplyBalances[account][asset] - (borrowBalances[account][asset] * 1.5); */
+  function calculateAccountValues(address account) public view returns (uint, uint, uint) {
+    uint totalBorrowInEth = 0;
+    uint totalSupplyInEth = 0;
+    for (uint i = 0; i < collateralMarkets.length; i++) {
+      address asset = collateralMarkets[i];
+      totalBorrowInEth += ( borrowBalances[account][asset] * fakePriceOracle[asset] / 10**18 );
+      totalSupplyInEth += ( supplyBalances[account][asset] * fakePriceOracle[asset] / 10**18  );
+    }
+    return (0, totalSupplyInEth, totalBorrowInEth);
+  }
 
-    return 507797233420262814;
+  /* @dev very loose interpretation of some admin and price oracle functionality for helping unit tests, not really in the money market interface */
+  address[] public listedTokens;
+  function _addToken(address tokenAddress, uint priceInWeth) public {
+    for (uint i = 0; i < collateralMarkets.length; i++) {
+      if (collateralMarkets[i] == tokenAddress) {
+        return;
+      }
+    }
+    collateralMarkets.push(tokenAddress);
+    fakePriceOracle[tokenAddress] = priceInWeth;
   }
 
   uint public collateralRatio = 1500000000000000000;
