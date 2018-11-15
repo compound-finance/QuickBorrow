@@ -26,9 +26,6 @@ contract CompoundBorrower {
     borrowedToken.approve(moneyMarketAddress, uint(-1));
   }
 
-  event L(string l);
-  event Log(int x);
-  event Lo(uint y);
   /* @dev sent from borrow factory, wraps eth and supplies weth, then borrows the token at address supplied in constructor */
   function fund() payable public {
     require(creator == msg.sender);
@@ -66,8 +63,6 @@ contract CompoundBorrower {
 
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
     uint borrowBalance = compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress);
-    emit L("about to repay");
-    emit Lo(borrowBalance);
     compoundMoneyMarket.repayBorrow(tokenAddress, uint(-1));
 
     withdrawExcessSupply();
@@ -79,16 +74,11 @@ contract CompoundBorrower {
     if (excessLiquidity > 0) {
       uint amountToWithdraw;
       uint borrowBalance = compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress);
-      emit L("withdrawing eth");
       if (borrowBalance == 0) {
-        emit L("myeh");
         amountToWithdraw = uint(-1);
       } else {
-        emit L("nyoh");
         amountToWithdraw = uint( excessLiquidity );
       }
-      emit Lo(borrowBalance);
-      emit Lo(amountToWithdraw);
 
       compoundMoneyMarket.withdraw(wethAddress, amountToWithdraw);
 
@@ -103,16 +93,8 @@ contract CompoundBorrower {
     MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
     (uint status, uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
     /* require(status == 0); */
-    emit L("total supply");
-    emit Log(int(totalSupply));
     int totalPossibleBorrow = int(totalSupply * 4 / 7);
-    emit L("total borrow");
-    emit Log(int(totalBorrow));
-    emit L("total possible borrow");
-    emit Log(int(totalPossibleBorrow));
     int liquidity = int( totalPossibleBorrow ) - int( totalBorrow );
-    emit L("liquidity");
-    emit Log(liquidity);
     return liquidity;
   }
 

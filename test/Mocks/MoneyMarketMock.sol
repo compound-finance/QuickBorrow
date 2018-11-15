@@ -24,7 +24,6 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
     return 0;
   }
 
-  event W(uint x);
   function withdraw(address asset, uint amount) public returns (uint) {
     EIP20Interface token = EIP20Interface(asset);
     uint supplyBalance = supplyBalances[msg.sender][asset];
@@ -35,7 +34,6 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
     } else {
       withdrawAmount = min(amount, supplyBalance);
     }
-    emit W(withdrawAmount);
 
     supplyBalances[msg.sender][asset] -= withdrawAmount;
     token.transfer(msg.sender, withdrawAmount);
@@ -43,25 +41,16 @@ contract MoneyMarketMock is MoneyMarketAccountInterface {
     return 0;
   }
 
-  event B(string x);
-  event C(uint x);
   function repayBorrow(address asset, uint amount) public returns (uint) {
     EIP20Interface token = EIP20Interface(asset);
     uint borrowBalance = borrowBalances[msg.sender][asset];
 
     uint repayAmount;
     if (amount == uint(-1)) {
-      emit B("repay options");
-      emit B("token balance");
-      emit C(token.balanceOf(msg.sender));
-      emit B("borrow balance");
-      emit C(borrowBalance);
       repayAmount = min(token.balanceOf(msg.sender), borrowBalance);
     } else {
       repayAmount = amount;
     }
-    emit B("chosen repay");
-    emit C(repayAmount);
 
     borrowBalances[msg.sender][asset] -= repayAmount;
     token.transferFrom(msg.sender, address(this), repayAmount);
