@@ -1,6 +1,9 @@
 pragma solidity ^0.4.24;
 
-contract MoneyMarketAccountInterface {
+contract MoneyMarketInterface {
+  uint public collateralRatio;
+  address[] public collateralMarkets;
+
   function borrow(address asset, uint amount) public returns (uint);
 
   function supply(address asset, uint amount) public returns (uint);
@@ -9,17 +12,11 @@ contract MoneyMarketAccountInterface {
 
   function repayBorrow(address asset, uint amount) public returns (uint);
 
-  //second wave
   function getSupplyBalance(address account, address asset)  public returns (uint);
 
   function getBorrowBalance(address account, address asset)  public returns (uint);
 
-  //third wave
   function assetPrices(address asset) public view returns (uint);
-
-
-  uint public collateralRatio;
-  address[] public collateralMarkets;
 
   function calculateAccountValues(address account) public view returns (uint, uint, uint);
 }

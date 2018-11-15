@@ -2,7 +2,7 @@ pragma solidity ^0.4.24;
 
 import "./EIP20Interface.sol";
 import "./WrappedEtherInterface.sol";
-import "./MoneyMarketAccountInterface.sol";
+import "./MoneyMarketInterface.sol";
 
 contract CompoundBorrower {
   uint constant expScale = 10**18;
@@ -33,7 +33,7 @@ contract CompoundBorrower {
     WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
     weth.deposit.value(msg.value)();
 
-    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
+    MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
     compoundMoneyMarket.supply(wethAddress, msg.value);
 
     borrowAvailableTokens();
@@ -42,7 +42,7 @@ contract CompoundBorrower {
   function borrowAvailableTokens() {
     int excessLiquidity = calculateExcessLiquidity();
     if (excessLiquidity > 0) {
-      MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
+      MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
       uint assetPrice = compoundMoneyMarket.assetPrices(tokenAddress);
       /* assetPrice contains expScale, so must be factored out */
       /* by including it in numerator */
@@ -61,7 +61,7 @@ contract CompoundBorrower {
   function repay() external {
     require(creator == msg.sender);
 
-    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
+    MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
     uint borrowBalance = compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress);
     compoundMoneyMarket.repayBorrow(tokenAddress, uint(-1));
 
@@ -69,7 +69,7 @@ contract CompoundBorrower {
   }
 
   function withdrawExcessSupply() private returns ( uint ) {
-    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
+    MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
     int excessLiquidity = calculateExcessLiquidity();
     if (excessLiquidity > 0) {
       uint amountToWithdraw;
@@ -90,7 +90,7 @@ contract CompoundBorrower {
   }
 
   function calculateExcessLiquidity() private returns ( int ) {
-    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(moneyMarketAddress);
+    MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
     (uint status, uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
     /* require(status == 0); */
     int totalPossibleBorrow = int(totalSupply * 4 / 7);

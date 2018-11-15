@@ -1,9 +1,9 @@
 pragma solidity ^0.4.24;
 
-import "../../contracts/MoneyMarketAccountInterface.sol";
+import "../../contracts/MoneyMarketInterface.sol";
 import "../../contracts/EIP20Interface.sol";
 
-contract MoneyMarketMock is MoneyMarketAccountInterface {
+contract MoneyMarketMock is MoneyMarketInterface {
   mapping(address => mapping(address => uint)) public supplyBalances;
   mapping(address => mapping(address => uint)) public borrowBalances;
 

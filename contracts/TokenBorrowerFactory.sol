@@ -33,7 +33,7 @@ contract TokenBorrowerFactory {
   /* @notice User must approve this contract to transfer the erc 20 token being borrowed. Calling this function will repay entire borrow if allowance exceeds what is owed, othewise will repay the allowance. The caller will receive any excess ether if they are overcollateralized after repaying the borrow.*/
   function repay() public {
     EIP20Interface token = EIP20Interface(TokenAddress);
-    MoneyMarketAccountInterface compoundMoneyMarket = MoneyMarketAccountInterface(MoneyMarketAddress);
+    MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(MoneyMarketAddress);
 
     address borrowerAddress = borrowers[msg.sender];
     uint borrowBalance = compoundMoneyMarket.getBorrowBalance(borrowerAddress, TokenAddress);
