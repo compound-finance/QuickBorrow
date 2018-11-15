@@ -27,7 +27,7 @@ contract CompoundBorrower {
   }
 
   /* @dev sent from borrow factory, wraps eth and supplies weth, then borrows the token at address supplied in constructor */
-  function fund() payable public {
+  function fund() payable external {
     require(creator == msg.sender);
 
     WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
@@ -39,7 +39,7 @@ contract CompoundBorrower {
     borrowAvailableTokens();
   }
 
-  function borrowAvailableTokens() {
+  function borrowAvailableTokens() private {
     int excessLiquidity = calculateExcessLiquidity();
     if (excessLiquidity > 0) {
       MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
@@ -68,11 +68,11 @@ contract CompoundBorrower {
     withdrawExcessSupply();
   }
 
-  function withdrawExcessSupply() private returns ( uint ) {
-    MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
+  function withdrawExcessSupply() private {
+    uint amountToWithdraw;
     int excessLiquidity = calculateExcessLiquidity();
     if (excessLiquidity > 0) {
-      uint amountToWithdraw;
+      MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
       uint borrowBalance = compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress);
       if (borrowBalance == 0) {
         amountToWithdraw = uint(-1);
