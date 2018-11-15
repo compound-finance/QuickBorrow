@@ -2,6 +2,7 @@ const MoneyMarket_ = artifacts.require("MoneyMarketMock");
 const weth_ = artifacts.require("WETHMock");
 const borrowToken_ = artifacts.require("StandardTokenMock");
 const TokenBorrowerFactory = artifacts.require("TokenBorrowerFactory");
+const BigNumber = require("../node_modules/bignumber.js");
 
 
 contract('TokenBorrowerFactory', function([account1, ...accounts]) {
@@ -76,32 +77,30 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
 
       assert.equal((await token.balanceOf.call(account)).toNumber(), (startingBalance - amountBorrowed), "a few tokens are left after repaying max");
       let ethBalanceAfterRepay = await web3.eth.getBalance(account);
-      console.log(ethBalanceBeforeRepay);
-      console.log(ethBalanceAfterRepay);
-      console.log(ethBalanceBeforeRepay.minus(ethBalanceAfterRepay), "difff of balances");
 
-      assert.equal(ethBalanceAfterRepay.toString(), ethBalanceBeforeRepay.minus(totalGasCost).toString(), "has eth back");
+      // receive one eth after repaying
+      assert.equal(ethBalanceAfterRepay.minus(oneEth).toString(), ethBalanceBeforeRepay.minus(totalGasCost).toString(), "has eth back");
     });
 
     it("can repay part of loan, receiving collateral back", async () => {
       let theAccount = accounts[3];
       await web3.eth.sendTransaction({to: factory.address, from: theAccount, value: oneEth, gas: 8000000});
-      await token.setBalance(theAccount, startingBalance);
 
       let borrower = await factory.borrowers.call(theAccount);
       let ogSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
       let ogBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
+      let startingAccountBalance = await token.balanceOf.call(theAccount);
 
-      await token.approve(factory.address, 100, {from: theAccount});
+      let repayAmount = new BigNumber( amountBorrowed ).div( 2 );
+      await token.approve(factory.address, repayAmount.toString(), {from: theAccount});
       await factory.repay({from: theAccount});
 
       let finalBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
       let finalSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
       let finalAccountBalance = await token.balanceOf.call(theAccount);
 
-      assert.equal(finalSupplyBalance.toString(), ogSupplyBalance.toString(), "some collateral is withdrawn");
-      assert.equal(finalBorrowBalance.toString(), ogBorrowBalance.minus(100).toString(), "paid off 100");
-      assert.equal(finalAccountBalance.toString(), startingBalance.minus(100).toString(), "a few tokens are left");
+      assert.equal(startingAccountBalance.minus(repayAmount).toString(), finalAccountBalance.toString(), "some tokens have been taken");
+      assert.equal(finalBorrowBalance.toString(), ogBorrowBalance.minus(repayAmount).toString(), "paid off half");
     });
 
 

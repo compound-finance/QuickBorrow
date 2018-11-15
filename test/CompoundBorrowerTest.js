@@ -68,12 +68,7 @@ contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
     it("repays borrowed tokens", async () => {
       await borrower.fund({value: oneEth, gas: 5000000});
 
-      let startingSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
-      console.log(await mmm.getBorrowBalance.call(borrower.address, token.address));
       let startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
-
-      console.log(startingSupplyBalance, "sup1")
-      console.log(startingBorrowBalance, "borr1")
 
       // give borrower tokens necesary to pay off entire borrow
       await token.setBalance(borrower.address, startingBorrowBalance.toString());
@@ -82,15 +77,11 @@ contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
       let finalSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
       let finalBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
 
-      console.log(finalSupplyBalance, "supp")
-      console.log(finalBorrowBalance, "borr")
-      console.log((await mmm.getSupplyBalance.call(borrower.address, weth.address)));
-
-      assert.equal(finalBorrowBalance, 0, "repaied entire borrow");
+      assert.equal(finalBorrowBalance, 0, "repayed entire borrow");
       assert.equal(finalSupplyBalance, 0, "has withdrawn all supply");
     });
 
-    // it("targets 1.75 collateral ratio when funding or repaying", async () => {
-    // });
+    it("targets 1.75 collateral ratio when funding or repaying", async () => {
+    });
   })
 });
