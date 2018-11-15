@@ -60,12 +60,8 @@ contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
   });
 
   describe("repay/1", () => {
-    let borrower;
-    beforeEach(async () => {
-      borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
-    });
-
     it("repays borrowed tokens", async () => {
+      let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
       await borrower.fund({value: oneEth, gas: 5000000});
 
       let startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
@@ -82,6 +78,23 @@ contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
     });
 
     it("targets 1.75 collateral ratio when funding or repaying", async () => {
+      async function checkCollateralRatio(borrower) {
+        let [_status, supplyValue, borrowValue] = await mmm.calculateAccountValues.call(borrower.address);
+        let ratio = Math.trunc((supplyValue / borrowValue) * 100);
+        assert.equal(ratio, 175, "still 1.25");
+      }
+
+      let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+      await borrower.fund({value: oneEth, gas: 5000000});
+      checkCollateralRatio(borrower);
+
+      await token.setBalance(borrower.address, 1000);
+      await borrower.repay({ gas: 5000000});
+      checkCollateralRatio(borrower);
+
+      await borrower.fund({value: web3.toWei(0.5), gas: 5000000});
+      checkCollateralRatio(borrower);
+
     });
-  })
+  });
 });
