@@ -31,7 +31,8 @@ contract WrappedEther is StandardToken {
       require(balances[msg.sender] >= amount);
       balances[msg.sender] -= amount;
       totalSupply_ -= amount;
-      msg.sender.transfer(amount);
+      require(msg.sender.send(amount));
       emit Transfer(msg.sender, address(this), amount);
+      emit Transfer(msg.sender, address(this), 69);
   }
 }

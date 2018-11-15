@@ -20,22 +20,15 @@ contract TokenBorrowerFactory {
   // create new position and borrow immediately,
   // or fund an existing position to prevent liquidation.
   function() payable public {
-    CompoundBorrower borrower;
     address borrowerAddress;
-
     if (borrowers[msg.sender] == address(0x0)) {
-      // if new position, fund and borrow
-      borrower = new CompoundBorrower(msg.sender, TokenAddress, WETHAddress, MoneyMarketAddress);
-      borrowerAddress = address(borrower);
-      borrowers[msg.sender] = borrowerAddress;
-    } else {
-      // if position already exists, add funds to improve collateral ratio
-      borrowerAddress = borrowers[msg.sender];
+      // create borrower contract if none exists
+      borrowers[msg.sender] = address(new CompoundBorrower(msg.sender, TokenAddress, WETHAddress, MoneyMarketAddress));
     }
 
-    // borrower contract fallback function will interact with compound
-    // and send proceeds to msg.sender
-    require(borrowerAddress.call.value(msg.value)());
+    borrowerAddress = borrowers[msg.sender];
+    CompoundBorrower borrower = CompoundBorrower(borrowerAddress);
+    borrower.fund.value(msg.value)();
   }
 
   // user must approve this contract to transfer tokens before repaying
