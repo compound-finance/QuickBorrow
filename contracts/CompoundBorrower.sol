@@ -34,7 +34,8 @@ contract CompoundBorrower {
     weth.deposit.value(msg.value)();
 
     MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
-    compoundMoneyMarket.supply(wethAddress, msg.value);
+    uint supplyStatus = compoundMoneyMarket.supply(wethAddress, msg.value);
+    assert (supplyStatus == 0);
 
     borrowAvailableTokens();
   }
@@ -47,7 +48,8 @@ contract CompoundBorrower {
       /* assetPrice contains expScale, so must be factored out */
       /* by including it in numerator */
       uint targetBorrow = uint(excessLiquidity) * expScale / assetPrice;
-      compoundMoneyMarket.borrow(tokenAddress, targetBorrow);
+      uint borrowStatus = compoundMoneyMarket.borrow(tokenAddress, targetBorrow);
+      assert (borrowStatus == 0);
 
       /* this contract will now hold borrowed tokens, sweep them to owner */
       EIP20Interface borrowedToken = EIP20Interface(tokenAddress);
@@ -79,7 +81,8 @@ contract CompoundBorrower {
         amountToWithdraw = uint( excessLiquidity );
       }
 
-      compoundMoneyMarket.withdraw(wethAddress, amountToWithdraw);
+      uint withdrawStatus = compoundMoneyMarket.withdraw(wethAddress, amountToWithdraw);
+      assert(withdrawStatus == 0);
 
       WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
       uint wethBalance = weth.balanceOf(address(this));
@@ -90,9 +93,13 @@ contract CompoundBorrower {
 
   function calculateExcessLiquidity() private view returns ( int ) {
     MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
+    uint collateralRatio = compoundMoneyMarket.collateralRatio();
     (/* uint status */, uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
-    int totalPossibleBorrow = int(totalSupply * 4 / 7);
-    int liquidity = int( totalPossibleBorrow ) - int( totalBorrow );
+
+    // for adding an additional 25% buffer to supply so that user is not immediately close to liquidation
+    uint collateralRatioBuffer = 25 * 10 ** 16;
+    uint totalPossibleBorrow = ( totalSupply * 10 **18 ) / ( collateralRatio + collateralRatioBuffer );
+    int liquidity = int( totalPossibleBorrow ) - int( totalBorrow ); // this can go negative, so cat to int
     return liquidity;
   }
 
