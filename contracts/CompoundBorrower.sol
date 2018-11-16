@@ -90,8 +90,7 @@ contract CompoundBorrower {
 
   function calculateExcessLiquidity() private view returns ( int ) {
     MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
-    (uint status, uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
-    /* require(status == 0); */
+    (/* uint status */, uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
     int totalPossibleBorrow = int(totalSupply * 4 / 7);
     int liquidity = int( totalPossibleBorrow ) - int( totalBorrow );
     return liquidity;
