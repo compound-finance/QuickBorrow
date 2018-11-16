@@ -12,6 +12,7 @@ contract CompoundBorrower {
   address owner;
   address wethAddress;
 
+  event Log(uint x, string m);
   constructor (address _owner, address _tokenAddress, address _wethAddress, address _moneyMarketAddress) public {
     creator = msg.sender;
     owner = _owner;
@@ -35,7 +36,7 @@ contract CompoundBorrower {
 
     MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
     uint supplyStatus = compoundMoneyMarket.supply(wethAddress, msg.value);
-    assert (supplyStatus == 0);
+    emit Log(supplyStatus, "supply status");
 
     borrowAvailableTokens();
   }
@@ -49,7 +50,7 @@ contract CompoundBorrower {
       /* by including it in numerator */
       uint targetBorrow = uint(excessLiquidity) * expScale / assetPrice;
       uint borrowStatus = compoundMoneyMarket.borrow(tokenAddress, targetBorrow);
-      assert (borrowStatus == 0);
+      emit Log(borrowStatus, "borrow status");
 
       /* this contract will now hold borrowed tokens, sweep them to owner */
       EIP20Interface borrowedToken = EIP20Interface(tokenAddress);
@@ -82,7 +83,7 @@ contract CompoundBorrower {
       }
 
       uint withdrawStatus = compoundMoneyMarket.withdraw(wethAddress, amountToWithdraw);
-      assert(withdrawStatus == 0);
+      emit Log(withdrawStatus, "withdrawStatus");
 
       WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
       uint wethBalance = weth.balanceOf(address(this));
@@ -99,7 +100,7 @@ contract CompoundBorrower {
     // for adding an additional 25% buffer to supply so that user is not immediately close to liquidation
     uint collateralRatioBuffer = 25 * 10 ** 16;
     uint totalPossibleBorrow = ( totalSupply * 10 **18 ) / ( collateralRatio + collateralRatioBuffer );
-    int liquidity = int( totalPossibleBorrow ) - int( totalBorrow ); // this can go negative, so cat to int
+    int liquidity = int( totalPossibleBorrow ) - int( totalBorrow ); // this can go negative, so cast to int
     return liquidity;
   }
 
