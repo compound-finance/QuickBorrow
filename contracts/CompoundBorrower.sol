@@ -62,7 +62,6 @@ contract CompoundBorrower {
     require(creator == msg.sender);
 
     MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
-    uint borrowBalance = compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress);
     compoundMoneyMarket.repayBorrow(tokenAddress, uint(-1));
 
     withdrawExcessSupply();
