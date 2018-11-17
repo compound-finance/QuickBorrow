@@ -31,6 +31,19 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
     oneEth = web3.toWei(1, "ether");
   });
 
+  describe("minOfThree/3", async () => {
+    [
+      [1,2,3],
+      [5,2,9],
+      [88,10343,398]
+    ].forEach(([ a, b, c ]) => {
+      it("finds least of three values", async () =>{
+        let calculatedValue = await factory.minOfThree.call(a, b, c);
+        assert.equal(calculatedValue, Math.min(a,b,c), "finds same thing as javascript");
+      });
+    });
+  });
+
   describe("fallback/0", () => {
     let borrower;
     let startingSupplyBalance;
@@ -102,6 +115,7 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
       assert.equal(startingAccountBalance.minus(repayAmount).toString(), finalAccountBalance.toString(), "some tokens have been taken");
       assert.equal(finalBorrowBalance.toString(), ogBorrowBalance.minus(repayAmount).toString(), "paid off half");
     });
+
 
 
   });

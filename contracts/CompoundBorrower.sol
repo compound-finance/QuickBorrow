@@ -7,38 +7,33 @@ import "./MoneyMarketInterface.sol";
 contract CompoundBorrower {
   uint constant expScale = 10**18;
   uint constant collateralRatioBuffer = 25 * 10 ** 16;
-  address tokenAddress;
-  address moneyMarketAddress;
   address creator;
   address owner;
-  address wethAddress;
+  WrappedEtherInterface weth;
+  MoneyMarketInterface compoundMoneyMarket;
+  EIP20Interface borrowedToken;
 
   event Log(uint x, string m);
   event Log(int x, string m);
 
-  constructor (address _owner, address _tokenAddress, address _wethAddress, address _moneyMarketAddress) public {
+  constructor (address _owner, address tokenAddress, address wethAddress, address moneyMarketAddress) public {
     creator = msg.sender;
     owner = _owner;
-    tokenAddress = _tokenAddress;
-    wethAddress = _wethAddress;
-    moneyMarketAddress = _moneyMarketAddress;
+    borrowedToken = EIP20Interface(tokenAddress);
+    compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
+    weth = WrappedEtherInterface(wethAddress);
 
-    WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
     weth.approve(moneyMarketAddress, uint(-1));
-
-    EIP20Interface borrowedToken = EIP20Interface(tokenAddress);
     borrowedToken.approve(moneyMarketAddress, uint(-1));
   }
 
   /* @dev called from borrow factory, wraps eth and supplies weth, then borrows the token at address supplied in constructor */
   function fund() payable external {
-    MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
-    WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
     require(creator == msg.sender);
 
     weth.deposit.value(msg.value)();
 
-    uint supplyStatus = compoundMoneyMarket.supply(wethAddress, msg.value);
+    uint supplyStatus = compoundMoneyMarket.supply(weth, msg.value);
     emit Log(supplyStatus, "supply status");
 
     /* --------- borrow the tokens ----------- */
@@ -47,15 +42,14 @@ contract CompoundBorrower {
 
     uint availableBorrow = findAvailableBorrow(totalSupply, totalBorrow, collateralRatio);
 
-    uint assetPrice = compoundMoneyMarket.assetPrices(tokenAddress);
+    uint assetPrice = compoundMoneyMarket.assetPrices(borrowedToken);
     /* factor exp scale out of asset price by including in numerator */
     uint tokenAmount = availableBorrow * expScale / assetPrice;
-    uint borrowStatus = compoundMoneyMarket.borrow(tokenAddress, tokenAmount);
+    uint borrowStatus = compoundMoneyMarket.borrow(borrowedToken, tokenAmount);
     emit Log(borrowStatus, "borrow status");
     emit Log(tokenAmount, "borrowing tokens");
 
     /* ---------- sweep tokens to user ------------- */
-    EIP20Interface borrowedToken = EIP20Interface(tokenAddress);
     uint borrowedTokenBalance = borrowedToken.balanceOf(address(this));
     borrowedToken.transfer(owner, borrowedTokenBalance);
   }
@@ -65,8 +59,7 @@ contract CompoundBorrower {
   function repay() external {
     require(creator == msg.sender);
 
-    MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
-    compoundMoneyMarket.repayBorrow(tokenAddress, uint(-1));
+    compoundMoneyMarket.repayBorrow(borrowedToken, uint(-1));
 
     /* ---------- withdraw excess collateral weth ------- */
     uint collateralRatio = compoundMoneyMarket.collateralRatio();
@@ -81,12 +74,11 @@ contract CompoundBorrower {
       amountToWithdraw = availableWithdrawal;
     }
 
-    uint withdrawStatus = compoundMoneyMarket.withdraw(wethAddress, amountToWithdraw);
+    uint withdrawStatus = compoundMoneyMarket.withdraw(weth, amountToWithdraw);
     emit Log(withdrawStatus, "withdrawStatus");
     emit Log(amountToWithdraw, "withdrew this amount");
 
     /* ---------- return ether to user ---------*/
-    WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
     uint wethBalance = weth.balanceOf(address(this));
     weth.withdraw(wethBalance);
     owner.transfer(address(this).balance);
