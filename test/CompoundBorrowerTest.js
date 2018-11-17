@@ -75,26 +75,101 @@ contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
 
       assert.equal(finalBorrowBalance, 0, "repayed entire borrow");
       assert.equal(finalSupplyBalance, 0, "has withdrawn all supply");
+
+    });
+
+    it("repays what it can", async () => {
+      let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+      await borrower.fund({value: web3.toWei(0.5), gas: 5000000});
+
+      let startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address));
+      let startingSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address));
+
+      // give borrower tokens necesary to pay off entire borrow
+      await token.setBalance(borrower.address,  startingBorrowBalance.div(2).round().toString());
+      await borrower.repay({ gas: 5000000});
+
+      let finalSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
+      let finalBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address));
+
+      assert(finalBorrowBalance.times(2).minus(startingBorrowBalance).lte(1), "repay what borrower holds");
+      assert.equal(finalSupplyBalance, startingSupplyBalance.div(2).round().toString(), "has withdrawn half supply");
     });
 
     it("targets 1.75 collateral ratio when funding or repaying", async () => {
       async function checkCollateralRatio(borrower) {
         let [_status, supplyValue, borrowValue] = await mmm.calculateAccountValues.call(borrower.address);
         let ratio = Math.trunc((supplyValue / borrowValue) * 100);
-        assert.equal(ratio, 175, "still 1.25");
+        assert.equal(ratio, 175, "still 1.75");
       }
 
       let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
       await borrower.fund({value: oneEth, gas: 5000000});
-      checkCollateralRatio(borrower);
+      await checkCollateralRatio(borrower);
 
-      await token.setBalance(borrower.address, 1000);
+      await token.setBalance(borrower.address, 30 * 10 ** 18);
       await borrower.repay({ gas: 5000000});
-      checkCollateralRatio(borrower);
+      await checkCollateralRatio(borrower);
 
       await borrower.fund({value: web3.toWei(0.5), gas: 5000000});
-      checkCollateralRatio(borrower);
+      await checkCollateralRatio(borrower);
 
     });
   });
+
+  describe("findAvailableWithdrawal/3", async () => {
+      [
+        [100, 0, 1.75, 100],
+        [110, 50, 1.75, 10],
+        [110, 10, 1.75, 90],
+        [160, 50, 1.75, 60],
+        [200, 100, 1.5, 25],
+      ].forEach(async ([supplyValue, borrowValue, collateralRatio, availableWithdrawal]) => {
+        it("tells value of supply that can be withdrawn to reach target collateral ratio", async () => {
+          let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+          let scaledSupplyValue = supplyValue * 10 **36;
+          let scaledBorrowValue = borrowValue * 10 **36;
+          let scaledCollateralRatio = collateralRatio * 10 **18;
+          let scaledAvailableWithdrawal = availableWithdrawal * 10 **18;
+
+          assert.closeTo(( await borrower
+                       .findAvailableWithdrawal
+                       .call(
+                         scaledSupplyValue,
+                         scaledBorrowValue,
+                         scaledCollateralRatio) )
+                       .toNumber(),
+                       scaledAvailableWithdrawal,
+                       10 ** 9,
+                       "calculates what can be withdrawn to reach collateral ratio ( with .25 buffer)");
+        });
+
+      });
+
+      [
+        [100, 50, 1.75, 0],
+        [160, 200, 1.5, 0],
+        [0, 100, 1.5, 0],
+      ].forEach(async ([supplyValue, borrowValue, collateralRatio, availableWithdrawal]) => {
+        it("returns 0 if no excess supply", async () => {
+          let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+          let scaledSupplyValue = supplyValue * 10 **36;
+          let scaledBorrowValue = borrowValue * 10 **36;
+          let scaledCollateralRatio = collateralRatio * 10 **18;
+          let scaledAvailableWithdrawal = availableWithdrawal * 10 **18;
+
+          assert.equal(( await borrower
+                       .findAvailableWithdrawal
+                       .call(
+                         scaledSupplyValue,
+                         scaledBorrowValue,
+                         scaledCollateralRatio) )
+                       .toNumber(),
+                       0,
+                       "returns 0 if no exccess supply");
+        });
+      });
+
+  });
+
 });

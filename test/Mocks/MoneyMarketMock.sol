@@ -78,8 +78,8 @@ contract MoneyMarketMock is MoneyMarketInterface {
     uint totalSupplyInEth = 0;
     for (uint i = 0; i < collateralMarkets.length; i++) {
       address asset = collateralMarkets[i];
-      totalBorrowInEth += ( borrowBalances[account][asset] * fakePriceOracle[asset] / 10**18 );
-      totalSupplyInEth += ( supplyBalances[account][asset] * fakePriceOracle[asset] / 10**18  );
+      totalBorrowInEth += ( borrowBalances[account][asset] * fakePriceOracle[asset] );
+      totalSupplyInEth += ( supplyBalances[account][asset] * fakePriceOracle[asset] );
     }
     return (0, totalSupplyInEth, totalBorrowInEth);
   }

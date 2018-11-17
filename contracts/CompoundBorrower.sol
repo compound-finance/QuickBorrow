@@ -6,6 +6,7 @@ import "./MoneyMarketInterface.sol";
 
 contract CompoundBorrower {
   uint constant expScale = 10**18;
+  uint constant collateralRatioBuffer = 25 * 10 ** 16;
   address tokenAddress;
   address moneyMarketAddress;
   address creator;
@@ -13,6 +14,8 @@ contract CompoundBorrower {
   address wethAddress;
 
   event Log(uint x, string m);
+  event Log(int x, string m);
+
   constructor (address _owner, address _tokenAddress, address _wethAddress, address _moneyMarketAddress) public {
     creator = msg.sender;
     owner = _owner;
@@ -27,36 +30,34 @@ contract CompoundBorrower {
     borrowedToken.approve(moneyMarketAddress, uint(-1));
   }
 
-  /* @dev sent from borrow factory, wraps eth and supplies weth, then borrows the token at address supplied in constructor */
+  /* @dev called from borrow factory, wraps eth and supplies weth, then borrows the token at address supplied in constructor */
   function fund() payable external {
+    MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
+    WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
     require(creator == msg.sender);
 
-    WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
     weth.deposit.value(msg.value)();
 
-    MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
     uint supplyStatus = compoundMoneyMarket.supply(wethAddress, msg.value);
     emit Log(supplyStatus, "supply status");
 
-    borrowAvailableTokens();
-  }
+    /* --------- borrow the tokens ----------- */
+    uint collateralRatio = compoundMoneyMarket.collateralRatio();
+    (/* uint status */, uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
 
-  function borrowAvailableTokens() private {
-    int excessLiquidity = calculateExcessLiquidity();
-    if (excessLiquidity > 0) {
-      MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
-      uint assetPrice = compoundMoneyMarket.assetPrices(tokenAddress);
-      /* assetPrice contains expScale, so must be factored out */
-      /* by including it in numerator */
-      uint targetBorrow = uint(excessLiquidity) * expScale / assetPrice;
-      uint borrowStatus = compoundMoneyMarket.borrow(tokenAddress, targetBorrow);
-      emit Log(borrowStatus, "borrow status");
+    uint availableBorrow = findAvailableBorrow(totalSupply, totalBorrow, collateralRatio);
 
-      /* this contract will now hold borrowed tokens, sweep them to owner */
-      EIP20Interface borrowedToken = EIP20Interface(tokenAddress);
-      uint borrowedTokenBalance = borrowedToken.balanceOf(address(this));
-      borrowedToken.transfer(owner, borrowedTokenBalance);
-    }
+    uint assetPrice = compoundMoneyMarket.assetPrices(tokenAddress);
+    /* factor exp scale out of asset price by including in numerator */
+    uint tokenAmount = availableBorrow * expScale / assetPrice;
+    uint borrowStatus = compoundMoneyMarket.borrow(tokenAddress, tokenAmount);
+    emit Log(borrowStatus, "borrow status");
+    emit Log(tokenAmount, "borrowing tokens");
+
+    /* ---------- sweep tokens to user ------------- */
+    EIP20Interface borrowedToken = EIP20Interface(tokenAddress);
+    uint borrowedTokenBalance = borrowedToken.balanceOf(address(this));
+    borrowedToken.transfer(owner, borrowedTokenBalance);
   }
 
 
@@ -67,44 +68,57 @@ contract CompoundBorrower {
     MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
     compoundMoneyMarket.repayBorrow(tokenAddress, uint(-1));
 
-    withdrawExcessSupply();
-  }
-
-  function withdrawExcessSupply() private {
-    uint amountToWithdraw;
-    int excessLiquidity = calculateExcessLiquidity();
-    if (excessLiquidity > 0) {
-      MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
-      uint borrowBalance = compoundMoneyMarket.getBorrowBalance(address(this), tokenAddress);
-      if (borrowBalance == 0) {
-        amountToWithdraw = uint(-1);
-      } else {
-        amountToWithdraw = uint( excessLiquidity );
-      }
-
-      uint withdrawStatus = compoundMoneyMarket.withdraw(wethAddress, amountToWithdraw);
-      emit Log(withdrawStatus, "withdrawStatus");
-
-      WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
-      uint wethBalance = weth.balanceOf(address(this));
-      weth.withdraw(wethBalance);
-      owner.transfer(address(this).balance);
-    }
-  }
-
-  function calculateExcessLiquidity() private view returns ( int ) {
-    MoneyMarketInterface compoundMoneyMarket = MoneyMarketInterface(moneyMarketAddress);
+    /* ---------- withdraw excess collateral weth ------- */
     uint collateralRatio = compoundMoneyMarket.collateralRatio();
     (/* uint status */, uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
 
-    // for adding an additional 25% buffer to supply so that user is not immediately close to liquidation
-    uint collateralRatioBuffer = 25 * 10 ** 16;
-    uint totalPossibleBorrow = ( totalSupply * 10 **18 ) / ( collateralRatio + collateralRatioBuffer );
-    int liquidity = int( totalPossibleBorrow ) - int( totalBorrow ); // this can go negative, so cast to int
-    return liquidity;
+    uint availableWithdrawal = findAvailableWithdrawal(totalSupply, totalBorrow, collateralRatio);
+
+    uint amountToWithdraw;
+    if (totalBorrow == 0) {
+      amountToWithdraw = uint(-1);
+    } else {
+      amountToWithdraw = availableWithdrawal;
+    }
+
+    uint withdrawStatus = compoundMoneyMarket.withdraw(wethAddress, amountToWithdraw);
+    emit Log(withdrawStatus, "withdrawStatus");
+    emit Log(amountToWithdraw, "withdrew this amount");
+
+    /* ---------- return ether to user ---------*/
+    WrappedEtherInterface weth = WrappedEtherInterface(wethAddress);
+    uint wethBalance = weth.balanceOf(address(this));
+    weth.withdraw(wethBalance);
+    owner.transfer(address(this).balance);
   }
 
-  // need to accept eth for withdrawing weth
+  function findAvailableBorrow(uint currentSupplyValue, uint currentBorrowValue, uint collateralRatio) public pure returns (uint) {
+    uint totalPossibleBorrow =  currentSupplyValue / ( collateralRatio + collateralRatioBuffer );
+    // subtract current borrow for max borrow supported by current collateral
+    // totalPossibleBorrow was descaled when dividing by collateral ratio, add back in exponential scale
+    uint scaledLiquidity = ( totalPossibleBorrow * 10 ** 18 ) - ( currentBorrowValue ); // this can go negative, so cast to int
+    uint liquidity = scaledLiquidity / 10 ** 18;
+    if ( liquidity > totalPossibleBorrow ) {
+      // subtracting current borrow from possible borrow underflowed, account is undercollateralized
+      return 0;
+    } else {
+      return liquidity;
+    }
+  }
+
+  function findAvailableWithdrawal(uint currentSupplyValue, uint currentBorrowValue, uint collateralRatio) public pure returns (uint) {
+    uint requiredCollateralValue = ( currentBorrowValue / 10 ** 18 ) * ( collateralRatio + collateralRatioBuffer );
+    uint scaledAvailableWithdrawal = currentSupplyValue - requiredCollateralValue;
+    uint availableWithdrawal = scaledAvailableWithdrawal / 10 ** 18;
+    if (availableWithdrawal > currentSupplyValue ) {
+      // subtracting availableWithdrawal from requiredCollateral underflowed, account is undercollateralized
+      return 0;
+    } else {
+      return availableWithdrawal;
+    }
+  }
+
+  /* @dev it is necessary to accept eth to unwrap weth */
   function () public payable {}
 }
 
