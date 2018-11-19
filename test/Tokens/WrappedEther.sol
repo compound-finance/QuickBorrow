@@ -12,13 +12,10 @@ contract WrappedEther is StandardToken {
   string public symbol;
   uint8 public decimals;
 
-  event Bah(uint bah);
-
   /**
     * @dev Send ether to get tokens
     */
   function deposit() public payable {
-    emit Bah(msg.value);
     balances[msg.sender] += msg.value;
     totalSupply_ += msg.value;
     emit Transfer(address(this), msg.sender, msg.value);
@@ -33,6 +30,5 @@ contract WrappedEther is StandardToken {
       totalSupply_ -= amount;
       require(msg.sender.send(amount));
       emit Transfer(msg.sender, address(this), amount);
-      emit Transfer(msg.sender, address(this), 69);
   }
 }

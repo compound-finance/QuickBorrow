@@ -1,87 +1,175 @@
-const MoneyMarket_ = artifacts.require("MoneyMarketMock");
+const MoneyMarketMock_ = artifacts.require("MoneyMarketMock");
 const weth_ = artifacts.require("WETHMock");
 const token_ = artifacts.require("StandardTokenMock");
 const CompoundBorrower_ = artifacts.require("CompoundBorrower");
 
-contract('CompoundBorrower', function([root, account1, ...accounts]) {
+contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
   let mmm;
   let weth;
   let token;
   let borrower;
   let oneEth = web3.toWei(1, "ether");
-  let amountBorrowed = 210 * 10**18; // what ends up being borrowed based on borrow token price
+  let amountBorrowed = 395640535845651000000; // what ends up being borrowed based on borrow token price
+  // let amountBorrowed = 1.186921607536953 * 10 **21;
 
   const initialLiquidity = 10000 * 10**18;
 
   beforeEach(async function () {
-    mmm = await MoneyMarket_.deployed();
+    mmm = await MoneyMarketMock_.deployed();
     token = await token_.deployed();
     weth = await weth_.deployed();
-    borrower = await CompoundBorrower_.new(account1, token.address, weth.address, mmm.address);
+    await mmm._addToken(weth.address, 10**18);
+    let tokensPerEth = 1444312499999999;
+    await mmm._addToken(token.address, tokensPerEth);
 
     await token.setBalance(mmm.address, initialLiquidity);
-    await token.setBalance(borrower.address, 0);
-    await token.setBalance(account1, 0);
-
-    // root stands in for borrow factory in this context
-    await borrower.fund({value: oneEth, gas: 5000000});
   });
 
-  it("supplies all sent ether to moneymarket as weth and borrows max of borrow token", async () => {
-    var supplyBalance = await mmm.getSupplyBalance.call(borrower.address, weth.address);
-    assert.equal(supplyBalance.toNumber(), oneEth, "all sent ether gets supplied to money market as weth");
+  describe("fund/0", () => {
+    let startingSupplyBalance;
+    let startingBorrowBalance;
+    let startingMarketTokenBalance;
+    let borrower;
+    beforeEach(async () => {
+      borrower = await CompoundBorrower_.new(account1, token.address, weth.address, mmm.address);
+      await borrower.fund({value: oneEth, gas: 5000000});
 
-    var borrowBalance = await mmm.getBorrowBalance.call(borrower.address, token.address);
+      startingSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
+      startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
+    });
 
-    assert.equal(borrowBalance.toNumber(), amountBorrowed, "borrows some tokens");
-    assert.equal(await token.balanceOf.call(mmm.address), initialLiquidity - amountBorrowed, "money market contract now has 20 less tokens than starting");
-    assert.equal(await token.balanceOf.call(account1), amountBorrowed, "original account now holds borrowed tokens");
+    it("supplies all sent ether to moneymarket as weth and borrows max of borrow token", async () => {
+      assert.equal(startingSupplyBalance, oneEth, "all sent ether gets supplied to money market as weth");
+      assert.equal(startingBorrowBalance, amountBorrowed, "borrows some tokens");
+      assert.equal(await token.balanceOf.call(account1), amountBorrowed, "original account now holds borrowed tokens");
+    });
+
+    it("adds funds but does not borrow if it holds a borrow balance", async () => {
+      let startingBorrowerTokenBalance = ( await token.balanceOf.call(borrower.address) ).toString();
+
+      await borrower.fund({value: oneEth});
+
+      let newSupplyBalance = ( await mmm.getSupplyBalance.call(borrower.address, weth.address) ).toString();
+      let newBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
+      let newBorrowerTokenBalance = (await token.balanceOf.call(borrower.address)).toString();
+
+      assert.equal(newSupplyBalance, oneEth * 2, "supply balance is increased");
+      assert.equal(newBorrowBalance, startingBorrowBalance * 2, "receives more tokens");
+      assert.equal(newBorrowerTokenBalance, startingBorrowerTokenBalance * 2, "doesnt borrow more tokens");
+    });
   });
 
-  it("adds funds but does not borrow if it holds a borrow balance", async () => {
-    let ogSupplyBalance = await mmm.getSupplyBalance.call(borrower.address, weth.address);
-    let ogBorrowBalance = await mmm.getBorrowBalance.call(borrower.address, token.address);
-    let ogMarketTokenBalance =  await token.balanceOf.call(mmm.address);
-    let ogBorrowerTokenBalance = await token.balanceOf.call(borrower.address);
+  describe("repay/1", () => {
+    it("repays borrowed tokens", async () => {
+      let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+      await borrower.fund({value: oneEth, gas: 5000000});
 
-    await borrower.fund({from: root, value: oneEth});
+      let startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
 
-    let newSupplyBalance = await mmm.getSupplyBalance.call(borrower.address, weth.address);
-    let newBorrowBalance = await mmm.getBorrowBalance.call(borrower.address, token.address);
-    let newMarketTokenBalance =  await token.balanceOf.call(mmm.address);
-    let newBorrowerTokenBalance = await token.balanceOf.call(borrower.address);
+      // give borrower tokens necesary to pay off entire borrow
+      await token.setBalance(borrower.address, startingBorrowBalance.toString());
+      await borrower.repay({ gas: 5000000});
 
-    assert.notEqual(newSupplyBalance.toNumber(), ogSupplyBalance.toNumber(), "supplies more tokens");
-    assert.equal(newBorrowBalance.toNumber(), ogBorrowBalance.toNumber(), "doesnt receive more tokens");
-    assert.equal(newMarketTokenBalance.toNumber(), ogMarketTokenBalance.toNumber(), "market holds same tokens as before");
-    assert.equal(newBorrowerTokenBalance.toNumber(), ogBorrowerTokenBalance.toNumber(), "doesnt borrow more tokens");
+      let finalSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
+      let finalBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
 
-    assert.equal(newSupplyBalance.toNumber(), oneEth * 2, "supply balance is increased");
+      assert.equal(finalBorrowBalance, 0, "repayed entire borrow");
+      assert.equal(finalSupplyBalance, 0, "has withdrawn all supply");
+
+    });
+
+    it("repays what it can", async () => {
+      let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+      await borrower.fund({value: web3.toWei(0.5), gas: 5000000});
+
+      let startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address));
+      let startingSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address));
+
+      // give borrower tokens necesary to pay off entire borrow
+      await token.setBalance(borrower.address,  startingBorrowBalance.div(2).round().toString());
+      await borrower.repay({ gas: 5000000});
+
+      let finalSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
+      let finalBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address));
+
+      assert(finalBorrowBalance.times(2).minus(startingBorrowBalance).lte(1), "repay what borrower holds");
+      assert.equal(finalSupplyBalance, startingSupplyBalance.div(2).round().toString(), "has withdrawn half supply");
+    });
+
+    it("targets 1.75 collateral ratio when funding or repaying", async () => {
+      async function checkCollateralRatio(borrower) {
+        let [_status, supplyValue, borrowValue] = await mmm.calculateAccountValues.call(borrower.address);
+        let ratio = Math.trunc((supplyValue / borrowValue) * 100);
+        assert.equal(ratio, 175, "still 1.75");
+      }
+
+      let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+      await borrower.fund({value: oneEth, gas: 5000000});
+      await checkCollateralRatio(borrower);
+
+      await token.setBalance(borrower.address, 30 * 10 ** 18);
+      await borrower.repay({ gas: 5000000});
+      await checkCollateralRatio(borrower);
+
+      await borrower.fund({value: web3.toWei(0.5), gas: 5000000});
+      await checkCollateralRatio(borrower);
+
+    });
   });
 
-  it("repays borrowed tokens", async () => {
-    const startingBalance = 5000 * 10**18;
-    await token.setBalance(account1, startingBalance);
+  describe("findAvailableWithdrawal/3", async () => {
+      [
+        [100, 0, 1.75, 100],
+        [110, 50, 1.75, 10],
+        [110, 10, 1.75, 90],
+        [160, 50, 1.75, 60],
+        [200, 100, 1.5, 25],
+      ].forEach(async ([supplyValue, borrowValue, collateralRatio, availableWithdrawal]) => {
+        it("tells value of supply that can be withdrawn to reach target collateral ratio", async () => {
+          let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+          let scaledSupplyValue = supplyValue * 10 **36;
+          let scaledBorrowValue = borrowValue * 10 **36;
+          let scaledCollateralRatio = collateralRatio * 10 **18;
+          let scaledAvailableWithdrawal = availableWithdrawal * 10 **18;
 
-    assert.equal((await token.balanceOf.call(mmm.address)).toNumber(), initialLiquidity - amountBorrowed, "money market has lent some tokens");
+          assert.closeTo(( await borrower
+                       .findAvailableWithdrawal
+                       .call(
+                         scaledSupplyValue,
+                         scaledBorrowValue,
+                         scaledCollateralRatio) )
+                       .toNumber(),
+                       scaledAvailableWithdrawal,
+                       10 ** 9,
+                       "calculates what can be withdrawn to reach collateral ratio ( with .25 buffer)");
+        });
 
-    // sent tokens to quick borrow contract form owner before repaying
-    await token.transfer(borrower.address, amountBorrowed, {from: account1});
-    assert.notEqual(( await token.balanceOf.call(borrower.address) ).toNumber(), 0, "empty borrower contract");
-    await borrower.repay(-1, {from: root, gas: 5000000});
+      });
 
-    assert.equal(await token.balanceOf.call(mmm.address), initialLiquidity, "money market has its tokens back");
+      [
+        [100, 50, 1.75, 0],
+        [160, 200, 1.5, 0],
+        [0, 100, 1.5, 0],
+      ].forEach(async ([supplyValue, borrowValue, collateralRatio, availableWithdrawal]) => {
+        it("returns 0 if no excess supply", async () => {
+          let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+          let scaledSupplyValue = supplyValue * 10 **36;
+          let scaledBorrowValue = borrowValue * 10 **36;
+          let scaledCollateralRatio = collateralRatio * 10 **18;
+          let scaledAvailableWithdrawal = availableWithdrawal * 10 **18;
+
+          assert.equal(( await borrower
+                       .findAvailableWithdrawal
+                       .call(
+                         scaledSupplyValue,
+                         scaledBorrowValue,
+                         scaledCollateralRatio) )
+                       .toNumber(),
+                       0,
+                       "returns 0 if no exccess supply");
+        });
+      });
+
   });
 
-  it("returns held tokens and eth to owner when saying goodbye", async () => {
-    let theAccount = accounts[2];
-    let startingBalance = (await web3.eth.getBalance(theAccount)).toNumber();
-    let departingBorrower = await CompoundBorrower_.new(theAccount, token.address, weth.address, mmm.address);
-
-    await weth.setBalance(departingBorrower.address, oneEth);
-    await departingBorrower.sayGoodbye();
-
-    var finalBalance = await web3.eth.getBalance(theAccount);
-    assert.equal(finalBalance.toNumber() , startingBalance + (+oneEth), "gets eth back");
-  });
 });
