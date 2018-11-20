@@ -7,44 +7,40 @@ contract('CDP', function([root, account1, account2, ...accounts]) {
   let mmm;
   let weth;
   let token;
-  let borrower;
   let oneEth = web3.toWei(1, "ether");
   let amountBorrowed = 395640535845651000000; // what ends up being borrowed based on borrow token price
   // let amountBorrowed = 1.186921607536953 * 10 **21;
 
-  const initialLiquidity = 10000 * 10**18;
 
-  beforeEach(async function () {
+  before(async function () {
     mmm = await MoneyMarketMock_.deployed();
     token = await token_.deployed();
     weth = await weth_.deployed();
     await mmm._addToken(weth.address, 10**18);
     let tokensPerEth = 1444312499999999;
     await mmm._addToken(token.address, tokensPerEth);
-
-    await token.setBalance(mmm.address, initialLiquidity);
+    await token.setBalance(mmm.address, 10000 * 10**18);
   });
 
   describe("fund/0", () => {
-    let startingSupplyBalance;
-    let startingBorrowBalance;
-    let startingMarketTokenBalance;
-    let borrower;
-    beforeEach(async () => {
-      borrower = await CDP.new(account1, token.address, weth.address, mmm.address);
+    it("supplies all sent ether to moneymarket as weth and borrows max of borrow token", async () => {
+      let borrower = await CDP.new(account1, token.address, weth.address, mmm.address);
       await borrower.fund({value: oneEth, gas: 5000000});
 
-      startingSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
-      startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
-    });
+      let startingSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
+      let startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
 
-    it("supplies all sent ether to moneymarket as weth and borrows max of borrow token", async () => {
       assert.equal(startingSupplyBalance, oneEth, "all sent ether gets supplied to money market as weth");
       assert.equal(startingBorrowBalance, amountBorrowed, "borrows some tokens");
       assert.equal(await token.balanceOf.call(account1), amountBorrowed, "original account now holds borrowed tokens");
     });
 
     it("adds funds but does not borrow if it holds a borrow balance", async () => {
+      let borrower = await CDP.new(account1, token.address, weth.address, mmm.address);
+      await borrower.fund({value: oneEth, gas: 5000000});
+
+      let startingSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
+      let startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
       let startingBorrowerTokenBalance = ( await token.balanceOf.call(borrower.address) ).toString();
 
       await borrower.fund({value: oneEth});
@@ -56,6 +52,46 @@ contract('CDP', function([root, account1, account2, ...accounts]) {
       assert.equal(newSupplyBalance, oneEth * 2, "supply balance is increased");
       assert.equal(newBorrowBalance, startingBorrowBalance * 2, "receives more tokens");
       assert.equal(newBorrowerTokenBalance, startingBorrowerTokenBalance * 2, "doesnt borrow more tokens");
+    });
+
+    describe("failure modes", () => {
+      let borrower;
+      before(async () => {
+        borrower = await CDP.new(account1, token.address, weth.address, mmm.address);
+      });
+
+      it("failing to supply", async () => {
+        await mmm.setFail("supply", true);
+
+        try {
+          await borrower.fund({value: oneEth});
+        } catch(e) {
+          await mmm.setFail("supply", false);
+          assert.match(e, /revert supply failed|VM Exception while processing transaction/, "revert failure message");
+        }
+      });
+
+      it("failing to calculate account values", async () => {
+        await mmm.setFail("calculateAccountValues", true);
+
+        try {
+          await borrower.fund({value: oneEth});
+        } catch(e) {
+          await mmm.setFail("calculateAccountValues", false);
+          assert.match(e, /revert calculating account values failed|VM Exception while processing transaction/, "revert failure message");
+        }
+      });
+
+      it("failing to borrow", async () => {
+        await mmm.setFail("borrow", true);
+
+        try {
+          await borrower.fund({value: oneEth});
+        } catch(e) {
+          await mmm.setFail("borrow", false);
+          assert.match(e, /revert borrow failed|VM Exception while processing transaction/, "revert failure message");
+        }
+      });
     });
   });
 
@@ -113,7 +149,47 @@ contract('CDP', function([root, account1, account2, ...accounts]) {
 
       await borrower.fund({value: web3.toWei(0.5), gas: 5000000});
       await checkCollateralRatio(borrower);
+    });
 
+    describe("failure modes", () => {
+      let borrower;
+      before(async () => {
+         borrower = await CDP.new(account2, token.address, weth.address, mmm.address);
+        await borrower.fund({value: oneEth, gas: 5000000});
+      });
+
+      it("failing to withdraw", async () => {
+        await mmm.setFail("withdraw", true);
+
+        try {
+          await borrower.repay({ gas: 5000000});
+        } catch(e) {
+          await mmm.setFail("withdraw", false);
+          assert.match(e, /revert withdrawal failed|VM Exception while processing transaction/, "withdrawal failure message");
+        }
+      });
+
+      it("failing to calculate account values", async () => {
+        await mmm.setFail("calculateAccountValues", true);
+
+        try {
+          await borrower.repay({ gas: 5000000});
+        } catch(e) {
+          await mmm.setFail("calculateAccountValues", false);
+          assert.match(e, /revert calculating account values failed/, "revert failure message");
+        }
+      });
+
+      it("failing to repay", async () => {
+        await mmm.setFail("repay", true);
+
+        try {
+          await borrower.repay({ gas: 5000000});
+        } catch(e) {
+          await mmm.setFail("repay", false);
+          assert.match(e, /revert repay failed|VM Exception while processing transaction/, "revert failure message");
+        }
+      });
     });
   });
 

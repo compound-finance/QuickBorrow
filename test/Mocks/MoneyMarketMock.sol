@@ -7,10 +7,14 @@ contract MoneyMarketMock is MoneyMarketInterface {
   mapping(address => mapping(address => uint)) public supplyBalances;
   mapping(address => mapping(address => uint)) public borrowBalances;
 
-
   mapping(address => uint ) private fakePriceOracle;
 
   function borrow(address asset, uint amount) public returns (uint) {
+    bool failMode = failModes["borrow"];
+    if (failMode) {
+      return 1;
+    }
+
     borrowBalances[msg.sender][asset] += amount;
     EIP20Interface(asset).transfer(msg.sender, amount);
 
@@ -18,6 +22,11 @@ contract MoneyMarketMock is MoneyMarketInterface {
   }
 
   function supply(address asset, uint amount) public returns (uint) {
+    bool failMode = failModes["supply"];
+    if (failMode) {
+      return 1;
+    }
+
     supplyBalances[msg.sender][asset] += amount;
     EIP20Interface(asset).transferFrom(msg.sender, address(this), amount);
 
@@ -25,6 +34,11 @@ contract MoneyMarketMock is MoneyMarketInterface {
   }
 
   function withdraw(address asset, uint amount) public returns (uint) {
+    bool failMode = failModes["withdraw"];
+    if (failMode) {
+      return 1;
+    }
+
     EIP20Interface token = EIP20Interface(asset);
     uint supplyBalance = supplyBalances[msg.sender][asset];
 
@@ -42,6 +56,12 @@ contract MoneyMarketMock is MoneyMarketInterface {
   }
 
   function repayBorrow(address asset, uint amount) public returns (uint) {
+    bool failMode = failModes["repay"];
+    if (failMode) {
+      failMode = false;
+      return 1;
+    }
+
     EIP20Interface token = EIP20Interface(asset);
     uint borrowBalance = borrowBalances[msg.sender][asset];
 
@@ -74,6 +94,10 @@ contract MoneyMarketMock is MoneyMarketInterface {
   }
 
   function calculateAccountValues(address account) public view returns (uint, uint, uint) {
+    bool failMode = failModes["calculateAccountValues"];
+    if (failMode) {
+      return (1, 0, 0);
+    }
     uint totalBorrowInEth = 0;
     uint totalSupplyInEth = 0;
     for (uint i = 0; i < collateralMarkets.length; i++) {
@@ -85,7 +109,6 @@ contract MoneyMarketMock is MoneyMarketInterface {
   }
 
   /* @dev very loose interpretation of some admin and price oracle functionality for helping unit tests, not really in the money market interface */
-  address[] public listedTokens;
   function _addToken(address tokenAddress, uint priceInWeth) public {
     for (uint i = 0; i < collateralMarkets.length; i++) {
       if (collateralMarkets[i] == tokenAddress) {
@@ -94,6 +117,11 @@ contract MoneyMarketMock is MoneyMarketInterface {
     }
     collateralMarkets.push(tokenAddress);
     fakePriceOracle[tokenAddress] = priceInWeth;
+  }
+
+  mapping(string => bool) private failModes;
+  function setFail(string functionToFail, bool shouldFail) external {
+    failModes[functionToFail] = shouldFail;
   }
 
   uint public collateralRatio = 1500000000000000000;
