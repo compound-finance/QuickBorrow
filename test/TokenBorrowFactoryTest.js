@@ -2,7 +2,7 @@ const MoneyMarket_ = artifacts.require("MoneyMarketMock");
 const weth_ = artifacts.require("WETHMock");
 const borrowToken_ = artifacts.require("StandardTokenMock");
 const TokenBorrowerFactory = artifacts.require("TokenBorrowerFactory");
-const BigNumber = require("../node_modules/bignumber.js");
+const BigNumber = require("bignumber.js");
 
 
 contract('TokenBorrowerFactory', function([account1, ...accounts]) {
@@ -115,9 +115,23 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
       assert.equal(startingAccountBalance.minus(repayAmount).toString(), finalAccountBalance.toString(), "some tokens have been taken");
       assert.equal(finalBorrowBalance.toString(), ogBorrowBalance.minus(repayAmount).toString(), "paid off half");
     });
+  });
 
+  describe("reading balances", () => {
+    it( "calls money market balance functions with msg.sender" , async () => {
+      let theAccount = accounts[4];
+      await web3.eth.sendTransaction({to: factory.address, from: theAccount, value: oneEth, gas: 8000000});
 
+      let borrower = await factory.borrowers.call(theAccount);
+      let mmSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
+      let mmBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
 
+      let factorySupplyBalance = await factory.getSupplyBalance.call({from: theAccount});
+      let factoryBorrowBalance = await factory.getBorrowBalance.call({from: theAccount});
+
+      assert.equal(mmSupplyBalance, factorySupplyBalance, "reads same value as money market");
+      assert.equal(mmBorrowBalance, factoryBorrowBalance, "reads same value as money market");
+    });
   });
 
   async function ethSpentOnGas(receipt) {

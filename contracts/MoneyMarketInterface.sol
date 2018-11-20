@@ -12,11 +12,11 @@ contract MoneyMarketInterface {
 
   function repayBorrow(address asset, uint amount) public returns (uint);
 
-  function getSupplyBalance(address account, address asset)  public returns (uint);
+  function getSupplyBalance(address account, address asset) view public returns (uint);
 
-  function getBorrowBalance(address account, address asset)  public returns (uint);
+  function getBorrowBalance(address account, address asset) view public returns (uint);
 
-  function assetPrices(address asset) public view returns (uint);
+  function assetPrices(address asset) view public returns (uint);
 
-  function calculateAccountValues(address account) public view returns (uint, uint, uint);
+  function calculateAccountValues(address account) view public returns (uint, uint, uint);
 }

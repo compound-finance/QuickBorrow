@@ -1,9 +1,9 @@
 const MoneyMarketMock_ = artifacts.require("MoneyMarketMock");
 const weth_ = artifacts.require("WETHMock");
 const token_ = artifacts.require("StandardTokenMock");
-const CompoundBorrower_ = artifacts.require("CompoundBorrower");
+const CDP = artifacts.require("CDP");
 
-contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
+contract('CDP', function([root, account1, account2, ...accounts]) {
   let mmm;
   let weth;
   let token;
@@ -31,7 +31,7 @@ contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
     let startingMarketTokenBalance;
     let borrower;
     beforeEach(async () => {
-      borrower = await CompoundBorrower_.new(account1, token.address, weth.address, mmm.address);
+      borrower = await CDP.new(account1, token.address, weth.address, mmm.address);
       await borrower.fund({value: oneEth, gas: 5000000});
 
       startingSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
@@ -61,7 +61,7 @@ contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
 
   describe("repay/1", () => {
     it("repays borrowed tokens", async () => {
-      let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+      let borrower = await CDP.new(account2, token.address, weth.address, mmm.address);
       await borrower.fund({value: oneEth, gas: 5000000});
 
       let startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
@@ -79,7 +79,7 @@ contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
     });
 
     it("repays what it can", async () => {
-      let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+      let borrower = await CDP.new(account2, token.address, weth.address, mmm.address);
       await borrower.fund({value: web3.toWei(0.5), gas: 5000000});
 
       let startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address));
@@ -103,7 +103,7 @@ contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
         assert.equal(ratio, 175, "still 1.75");
       }
 
-      let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+      let borrower = await CDP.new(account2, token.address, weth.address, mmm.address);
       await borrower.fund({value: oneEth, gas: 5000000});
       await checkCollateralRatio(borrower);
 
@@ -126,7 +126,7 @@ contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
         [200, 100, 1.5, 25],
       ].forEach(async ([supplyValue, borrowValue, collateralRatio, availableWithdrawal]) => {
         it("tells value of supply that can be withdrawn to reach target collateral ratio", async () => {
-          let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+          let borrower = await CDP.new(account2, token.address, weth.address, mmm.address);
           let scaledSupplyValue = supplyValue * 10 **36;
           let scaledBorrowValue = borrowValue * 10 **36;
           let scaledCollateralRatio = collateralRatio * 10 **18;
@@ -152,7 +152,7 @@ contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
         [0, 100, 1.5, 0],
       ].forEach(async ([supplyValue, borrowValue, collateralRatio, availableWithdrawal]) => {
         it("returns 0 if no excess supply", async () => {
-          let borrower = await CompoundBorrower_.new(account2, token.address, weth.address, mmm.address);
+          let borrower = await CDP.new(account2, token.address, weth.address, mmm.address);
           let scaledSupplyValue = supplyValue * 10 **36;
           let scaledBorrowValue = borrowValue * 10 **36;
           let scaledCollateralRatio = collateralRatio * 10 **18;
@@ -169,7 +169,5 @@ contract('CompoundBorrower', function([root, account1, account2, ...accounts]) {
                        "returns 0 if no exccess supply");
         });
       });
-
   });
-
 });
