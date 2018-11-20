@@ -9,8 +9,6 @@ contract('CDP', function([root, account1, account2, ...accounts]) {
   let token;
   let oneEth = web3.toWei(1, "ether");
   let amountBorrowed = 395640535845651000000; // what ends up being borrowed based on borrow token price
-  // let amountBorrowed = 1.186921607536953 * 10 **21;
-
 
   before(async function () {
     mmm = await MoneyMarketMock_.deployed();
