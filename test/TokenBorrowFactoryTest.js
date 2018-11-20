@@ -2,7 +2,7 @@ const MoneyMarket_ = artifacts.require("MoneyMarketMock");
 const weth_ = artifacts.require("WETHMock");
 const borrowToken_ = artifacts.require("StandardTokenMock");
 const TokenBorrowerFactory = artifacts.require("TokenBorrowerFactory");
-const BigNumber = require("../node_modules/bignumber.js");
+const BigNumber = require("bignumber.js");
 
 
 contract('TokenBorrowerFactory', function([account1, ...accounts]) {
@@ -29,19 +29,6 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
     await token.setBalance(account1, 0);
 
     oneEth = web3.toWei(1, "ether");
-  });
-
-  describe("minOfThree/3", async () => {
-    [
-      [1,2,3],
-      [5,2,9],
-      [88,10343,398]
-    ].forEach(([ a, b, c ]) => {
-      it("finds least of three values", async () =>{
-        let calculatedValue = await factory.minOfThree.call(a, b, c);
-        assert.equal(calculatedValue, Math.min(a,b,c), "finds same thing as javascript");
-      });
-    });
   });
 
   describe("fallback/0", () => {
@@ -74,8 +61,8 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
   });
 
   describe("repay/0", () => {
-    it("can repay entire loan", async () => {
-      let account = accounts[4];
+    it("can repay entire loan ( user holds and allows enough tokens)", async () => {
+      let account = accounts[3];
       await web3.eth.sendTransaction({to: factory.address, from: account, value: oneEth, gas: 8000000});
       await token.setBalance(account, startingBalance);
       await token.approve(factory.address, -1, {from: account});
@@ -95,7 +82,50 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
       assert.equal(ethBalanceAfterRepay.minus(oneEth).toString(), ethBalanceBeforeRepay.minus(totalGasCost).toString(), "has eth back");
     });
 
-    it("can repay part of loan, receiving collateral back", async () => {
+    it("can repay part of loan, receiving collateral back, ( user does not hold enough tokens, allows excess )", async () => {
+      let theAccount = accounts[3];
+      await web3.eth.sendTransaction({to: factory.address, from: theAccount, value: oneEth, gas: 8000000});
+
+      let borrower = await factory.borrowers.call(theAccount);
+      let ogSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
+      let ogBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
+
+      let heldAmount = new BigNumber( amountBorrowed ).div( 2 );
+      await token.setBalance(theAccount, heldAmount);
+      await token.approve(factory.address, -1, {from: theAccount});
+      await factory.repay({from: theAccount});
+
+      let finalBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
+      let finalSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
+      let finalAccountBalance = await token.balanceOf.call(theAccount);
+
+      assert.equal("0", finalAccountBalance.toString(), "all tokens used to repay");
+      assert.equal(finalBorrowBalance.toString(), ogBorrowBalance.minus(heldAmount).toString(), "paid off half");
+    });
+
+    it("can repay part of loan, receiving collateral back, ( user does not allow enough tokens, and holds even less )", async () => {
+      let theAccount = accounts[3];
+      await web3.eth.sendTransaction({to: factory.address, from: theAccount, value: oneEth, gas: 8000000});
+
+      let borrower = await factory.borrowers.call(theAccount);
+      let ogSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
+      let ogBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
+
+      let allowanceAmount = new BigNumber( amountBorrowed ).div( 2 );
+      let heldAmount = allowanceAmount.div( 2 );
+      await token.setBalance(theAccount, heldAmount);
+      await token.approve(factory.address, allowanceAmount, {from: theAccount});
+      await factory.repay({from: theAccount});
+
+      let finalBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
+      let finalSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
+      let finalAccountBalance = await token.balanceOf.call(theAccount);
+
+      assert.equal("0", finalAccountBalance.toString(), "all tokens used to repay");
+      assert.equal(finalBorrowBalance.toString(), ogBorrowBalance.minus(heldAmount).toString(), "paid off half");
+    });
+
+    it("can repay part of loan, receiving collateral back ( user has not approved enough tokens)", async () => {
       let theAccount = accounts[3];
       await web3.eth.sendTransaction({to: factory.address, from: theAccount, value: oneEth, gas: 8000000});
 
@@ -115,9 +145,23 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
       assert.equal(startingAccountBalance.minus(repayAmount).toString(), finalAccountBalance.toString(), "some tokens have been taken");
       assert.equal(finalBorrowBalance.toString(), ogBorrowBalance.minus(repayAmount).toString(), "paid off half");
     });
+  });
 
+  describe("reading balances", () => {
+    it( "calls money market balance functions with msg.sender" , async () => {
+      let theAccount = accounts[4];
+      await web3.eth.sendTransaction({to: factory.address, from: theAccount, value: oneEth, gas: 8000000});
 
+      let borrower = await factory.borrowers.call(theAccount);
+      let mmSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
+      let mmBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
 
+      let factorySupplyBalance = await factory.getSupplyBalance.call({from: theAccount});
+      let factoryBorrowBalance = await factory.getBorrowBalance.call({from: theAccount});
+
+      assert.equal(mmSupplyBalance.toString(), factorySupplyBalance.toString(), "reads weth supply value from momey market")
+      assert.equal(mmBorrowBalance.toString(), factoryBorrowBalance.toString(), "reads token borrow value from money market");
+    });
   });
 
   async function ethSpentOnGas(receipt) {
