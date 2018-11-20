@@ -34,10 +34,12 @@ contract CDP {
     weth.deposit.value(msg.value)();
 
     uint supplyStatus = compoundMoneyMarket.supply(weth, msg.value);
+    require(supplyStatus == 0, "supply failed");
 
     /* --------- borrow the tokens ----------- */
     uint collateralRatio = compoundMoneyMarket.collateralRatio();
-    (/* uint status */, uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
+    (uint status , uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
+    require(status == 0, "calculating account values failed");
 
     uint availableBorrow = findAvailableBorrow(totalSupply, totalBorrow, collateralRatio);
 
@@ -45,6 +47,7 @@ contract CDP {
     /* factor exp scale out of asset price by including in numerator */
     uint tokenAmount = availableBorrow * expScale / assetPrice;
     uint borrowStatus = compoundMoneyMarket.borrow(borrowedToken, tokenAmount);
+    require(borrowStatus == 0, "borrow failed");
 
     /* ---------- sweep tokens to user ------------- */
     uint borrowedTokenBalance = borrowedToken.balanceOf(address(this));
@@ -56,7 +59,8 @@ contract CDP {
   function repay() external {
     require(creator == msg.sender);
 
-    compoundMoneyMarket.repayBorrow(borrowedToken, uint(-1));
+    uint repayStatus = compoundMoneyMarket.repayBorrow(borrowedToken, uint(-1));
+    require(repayStatus == 0, "repay failed");
 
     /* ---------- withdraw excess collateral weth ------- */
     uint collateralRatio = compoundMoneyMarket.collateralRatio();
