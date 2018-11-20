@@ -3,7 +3,7 @@ const weth_ = artifacts.require("WETHMock");
 const token_ = artifacts.require("StandardTokenMock");
 const CDP = artifacts.require("CDP");
 
-contract('CDP', function([root, account1, account2, ...accounts]) {
+contract.only('CDP', function([root, account1, account2, ...accounts]) {
   let mmm;
   let weth;
   let token;
@@ -21,35 +21,38 @@ contract('CDP', function([root, account1, account2, ...accounts]) {
   });
 
   describe("fund/0", () => {
-    it("supplies all sent ether to moneymarket as weth and borrows max of borrow token", async () => {
-      let borrower = await CDP.new(account1, token.address, weth.address, mmm.address);
-      await borrower.fund({value: oneEth, gas: 5000000});
+    describe("success modes", () => {
+      let borrower;
+      let startingSupplyBalance;
+      let startingBorrowBalance;
 
-      let startingSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
-      let startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
+      beforeEach(async () => {
+        borrower = await CDP.new(account1, token.address, weth.address, mmm.address);
+        await borrower.fund({value: oneEth, gas: 5000000});
 
-      assert.equal(startingSupplyBalance, oneEth, "all sent ether gets supplied to money market as weth");
-      assert.equal(startingBorrowBalance, amountBorrowed, "borrows some tokens");
-      assert.equal(await token.balanceOf.call(account1), amountBorrowed, "original account now holds borrowed tokens");
-    });
+        startingSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
+        startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
+      });
 
-    it("adds funds but does not borrow if it holds a borrow balance", async () => {
-      let borrower = await CDP.new(account1, token.address, weth.address, mmm.address);
-      await borrower.fund({value: oneEth, gas: 5000000});
+      it("supplies all sent ether to moneymarket as weth and borrows max of borrow token", async () => {
+        assert.equal(startingSupplyBalance, oneEth, "all sent ether gets supplied to money market as weth");
+        assert.equal(startingBorrowBalance, amountBorrowed, "borrows some tokens");
+        assert.equal(await token.balanceOf.call(account1), amountBorrowed, "original account now holds borrowed tokens");
+      });
 
-      let startingSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
-      let startingBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
-      let startingBorrowerTokenBalance = ( await token.balanceOf.call(borrower.address) ).toString();
+      it("adds funds but does not borrow if it holds a borrow balance", async () => {
+        let startingBorrowerTokenBalance = ( await token.balanceOf.call(borrower.address) ).toString();
 
-      await borrower.fund({value: oneEth});
+        await borrower.fund({value: oneEth});
 
-      let newSupplyBalance = ( await mmm.getSupplyBalance.call(borrower.address, weth.address) ).toString();
-      let newBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
-      let newBorrowerTokenBalance = (await token.balanceOf.call(borrower.address)).toString();
+        let newSupplyBalance = (await mmm.getSupplyBalance.call(borrower.address, weth.address)).toString();
+        let newBorrowBalance = (await mmm.getBorrowBalance.call(borrower.address, token.address)).toString();
+        let newBorrowerTokenBalance = (await token.balanceOf.call(borrower.address)).toString();
 
-      assert.equal(newSupplyBalance, oneEth * 2, "supply balance is increased");
-      assert.equal(newBorrowBalance, startingBorrowBalance * 2, "receives more tokens");
-      assert.equal(newBorrowerTokenBalance, startingBorrowerTokenBalance * 2, "doesnt borrow more tokens");
+        assert.equal(newSupplyBalance, oneEth * 2, "supply balance is increased");
+        assert.equal(newBorrowBalance, startingBorrowBalance * 2, "borrow balance is increased");
+        assert.equal(newBorrowerTokenBalance, startingBorrowerTokenBalance * 2, "receives more tokens");
+      });
     });
 
     describe("failure modes", () => {

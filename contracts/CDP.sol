@@ -27,7 +27,10 @@ contract CDP {
     borrowedToken.approve(compoundMoneyMarket, uint(-1));
   }
 
-  /* @dev called from borrow factory, wraps eth and supplies weth, then borrows the token at address supplied in constructor */
+  /*
+    @dev called from borrow factory, wraps eth and supplies weth, then borrows
+     the token at address supplied in constructor
+  */
   function fund() payable external {
     require(creator == msg.sender);
 
@@ -44,8 +47,8 @@ contract CDP {
     uint availableBorrow = findAvailableBorrow(totalSupply, totalBorrow, collateralRatio);
 
     uint assetPrice = compoundMoneyMarket.assetPrices(borrowedToken);
-    /* factor exp scale out of asset price by including in numerator */
-    uint tokenAmount = availableBorrow * expScale / assetPrice;
+    /* available borrow is scaled 10e36, dividing asset price brings it to 10e18 */
+    uint tokenAmount = ( availableBorrow * expScale ) / assetPrice;
     uint borrowStatus = compoundMoneyMarket.borrow(borrowedToken, tokenAmount);
     require(borrowStatus == 0, "borrow failed");
 
@@ -64,15 +67,14 @@ contract CDP {
 
     /* ---------- withdraw excess collateral weth ------- */
     uint collateralRatio = compoundMoneyMarket.collateralRatio();
-    (/* uint status */, uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
-
-    uint availableWithdrawal = findAvailableWithdrawal(totalSupply, totalBorrow, collateralRatio);
+    (uint status , uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
+    require(status == 0, "calculating account values failed");
 
     uint amountToWithdraw;
     if (totalBorrow == 0) {
       amountToWithdraw = uint(-1);
     } else {
-      amountToWithdraw = availableWithdrawal;
+      amountToWithdraw = findAvailableWithdrawal(totalSupply, totalBorrow, collateralRatio);
     }
 
     uint withdrawStatus = compoundMoneyMarket.withdraw(weth, amountToWithdraw);
@@ -84,29 +86,23 @@ contract CDP {
     owner.transfer(address(this).balance);
   }
 
+  /* @dev returns borrow value in eth scaled to 10e18 */
   function findAvailableBorrow(uint currentSupplyValue, uint currentBorrowValue, uint collateralRatio) public pure returns (uint) {
-    uint totalPossibleBorrow =  currentSupplyValue / ( collateralRatio + collateralRatioBuffer );
-    // subtract current borrow for max borrow supported by current collateral
-    // totalPossibleBorrow was descaled when dividing by collateral ratio, add back in exponential scale
-    uint scaledLiquidity = ( totalPossibleBorrow * expScale ) - ( currentBorrowValue ); // this can go negative, so cast to int
-    uint liquidity = scaledLiquidity / expScale;
-    if ( liquidity > totalPossibleBorrow ) {
-      // subtracting current borrow from possible borrow underflowed, account is undercollateralized
-      return 0;
+    uint totalPossibleBorrow =  ( currentSupplyValue  * expScale ) / ( collateralRatio + collateralRatioBuffer );
+    if ( totalPossibleBorrow > currentBorrowValue ) {
+      return (totalPossibleBorrow - currentBorrowValue) / expScale;
     } else {
-      return liquidity;
+      return 0;
     }
   }
 
+  /* @dev returns available withdrawal in eth scale to 10e18 */
   function findAvailableWithdrawal(uint currentSupplyValue, uint currentBorrowValue, uint collateralRatio) public pure returns (uint) {
-    uint requiredCollateralValue = ( currentBorrowValue / expScale ) * ( collateralRatio + collateralRatioBuffer );
-    uint scaledAvailableWithdrawal = currentSupplyValue - requiredCollateralValue;
-    uint availableWithdrawal = scaledAvailableWithdrawal / expScale;
-    if (availableWithdrawal > currentSupplyValue ) {
-      // subtracting availableWithdrawal from requiredCollateral underflowed, account is undercollateralized
-      return 0;
+    uint requiredCollateralValue = currentBorrowValue * ( collateralRatio + collateralRatioBuffer ) / expScale;
+    if ( currentSupplyValue > requiredCollateralValue ) {
+      return ( currentSupplyValue - requiredCollateralValue ) / expScale;
     } else {
-      return availableWithdrawal;
+      return 0;
     }
   }
 
