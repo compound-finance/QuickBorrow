@@ -34,8 +34,8 @@ contract TokenBorrowerFactory {
   /* @notice User must approve this contract to transfer the erc 20 token being borrowed. Calling this function will repay entire borrow if allowance exceeds what is owed, othewise will repay the allowance. The caller will receive any excess ether if they are overcollateralized after repaying the borrow.*/
   function repay() public {
     CDP cdp = borrowers[msg.sender];
-    uint borrowBalance = compoundMoneyMarket.getBorrowBalance(cdp, token);
     uint allowance = token.allowance(msg.sender, address(this));
+    uint borrowBalance = compoundMoneyMarket.getBorrowBalance(cdp, token);
     uint userTokenBalance = token.balanceOf(msg.sender);
     uint transferAmount = minOfThree(allowance, borrowBalance, userTokenBalance);
 
@@ -43,7 +43,7 @@ contract TokenBorrowerFactory {
     cdp.repay();
   }
 
-  function minOfThree(uint a, uint b, uint c) public pure returns ( uint ) {
+  function minOfThree(uint a, uint b, uint c) private pure returns ( uint ) {
     if (a >= b) {
       if (b >= c) {
         return c;
@@ -59,11 +59,11 @@ contract TokenBorrowerFactory {
     }
   }
 
-  function getBorrowBalance() public view returns (uint) {
+  function getBorrowBalance() view public returns (uint) {
     return compoundMoneyMarket.getBorrowBalance(borrowers[msg.sender], token);
   }
 
-  function getSupplyBalance() public view returns (uint) {
+  function getSupplyBalance() view public returns (uint) {
     return compoundMoneyMarket.getSupplyBalance(borrowers[msg.sender], WETHAddress);
   }
 }

@@ -34,7 +34,6 @@ contract CDP {
     weth.deposit.value(msg.value)();
 
     uint supplyStatus = compoundMoneyMarket.supply(weth, msg.value);
-    emit Log(supplyStatus, "supply status");
 
     /* --------- borrow the tokens ----------- */
     uint collateralRatio = compoundMoneyMarket.collateralRatio();
@@ -46,8 +45,6 @@ contract CDP {
     /* factor exp scale out of asset price by including in numerator */
     uint tokenAmount = availableBorrow * expScale / assetPrice;
     uint borrowStatus = compoundMoneyMarket.borrow(borrowedToken, tokenAmount);
-    emit Log(borrowStatus, "borrow status");
-    emit Log(tokenAmount, "borrowing tokens");
 
     /* ---------- sweep tokens to user ------------- */
     uint borrowedTokenBalance = borrowedToken.balanceOf(address(this));

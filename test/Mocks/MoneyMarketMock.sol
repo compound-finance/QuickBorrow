@@ -59,11 +59,11 @@ contract MoneyMarketMock is MoneyMarketInterface {
   }
   // second wave
 
-  function getSupplyBalance(address account, address asset)  public returns (uint) {
+  function getSupplyBalance(address account, address asset) view public returns (uint) {
     return supplyBalances[account][asset];
   }
 
-  function getBorrowBalance(address account, address asset)  public returns (uint) {
+  function getBorrowBalance(address account, address asset) view public returns (uint) {
     return borrowBalances[account][asset];
   }
 
@@ -98,7 +98,7 @@ contract MoneyMarketMock is MoneyMarketInterface {
 
   uint public collateralRatio = 1500000000000000000;
 
-  function min(uint a, uint b) pure internal returns (uint) {
+  function min(uint a, uint b) internal pure returns (uint) {
     if (a < b) {
       return a;
     } else {

@@ -117,6 +117,60 @@ contract('CDP', function([root, account1, account2, ...accounts]) {
     });
   });
 
+  describe("findAvailableBorrow/3", async () => {
+      [
+        [100, 0, 1.75, 50],
+        [110, 50, 1.75, 5],
+        [110, 10, 1.75, 45],
+        [160, 50, 1.75, 30],
+        [280, 100, 1.5, 60],
+      ].forEach(async ([supplyValue, borrowValue, collateralRatio, availableBorrow]) => {
+        // note the cdp will add .25 to colateral ratio
+        it("tells value of token that can be borrowed to reach target collateral ratio", async () => {
+          let borrower = await CDP.new(account2, token.address, weth.address, mmm.address);
+          let scaledSupplyValue = supplyValue * 10 **36;
+          let scaledBorrowValue = borrowValue * 10 **36;
+          let scaledCollateralRatio = collateralRatio * 10 **18;
+          let scaledAvailableBorrow = availableBorrow * 10 **18;
+
+          assert.closeTo(( await borrower
+                       .findAvailableBorrow
+                       .call(
+                         scaledSupplyValue,
+                         scaledBorrowValue,
+                         scaledCollateralRatio) )
+                       .toNumber(),
+                       scaledAvailableBorrow,
+                       10 ** 9,
+                       "calculates what can be borrowed to reach collateral ratio ( with .25 buffer)");
+        });
+      });
+
+      [
+        [100, 50, 1.75, 0],
+        [160, 200, 1.5, 0],
+        [0, 100, 1.5, 0],
+      ].forEach(async ([supplyValue, borrowValue, collateralRatio, availableBorrow]) => {
+        it("returns 0 if no excess supply", async () => {
+          let borrower = await CDP.new(account2, token.address, weth.address, mmm.address);
+          let scaledSupplyValue = supplyValue * 10 **36;
+          let scaledBorrowValue = borrowValue * 10 **36;
+          let scaledCollateralRatio = collateralRatio * 10 **18;
+          let scaledAvailableBorrow = availableBorrow * 10 **18;
+
+          assert.equal(( await borrower
+                       .findAvailableBorrow
+                       .call(
+                         scaledSupplyValue,
+                         scaledBorrowValue,
+                         scaledCollateralRatio) )
+                       .toNumber(),
+                       0,
+                       "returns 0 if no exccess supply");
+        });
+      });
+  });
+
   describe("findAvailableWithdrawal/3", async () => {
       [
         [100, 0, 1.75, 100],
