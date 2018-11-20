@@ -60,6 +60,14 @@ contract('CDP', function([root, account1, account2, ...accounts]) {
         borrower = await CDP.new(account1, token.address, weth.address, mmm.address);
       });
 
+      it("reverts calls not from creator", async () => {
+        try {
+          await borrower.fund({value: oneEth, from: accounts[3]});
+        } catch(e) {
+          assert.match(e, /VM Exception while processing transaction/, "requires msg.sender is creator");
+        }
+      });
+
       it("failing to supply", async () => {
         await mmm.setFail("supply", true);
 
@@ -177,6 +185,14 @@ contract('CDP', function([root, account1, account2, ...accounts]) {
         } catch(e) {
           await mmm.setFail("calculateAccountValues", false);
           assert.match(e, /revert calculating account values failed/, "revert failure message");
+        }
+      });
+
+      it("requires msg.sender is creator", async() => {
+        try {
+          await borrower.repay({from: accounts[3]});
+        } catch(e) {
+          assert.match(e, /VM Exception while processing transaction/, "requires msg.sender is creator");
         }
       });
 
