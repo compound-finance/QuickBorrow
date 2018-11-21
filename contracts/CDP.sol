@@ -3,8 +3,10 @@ pragma solidity ^0.4.24;
 import "./EIP20Interface.sol";
 import "./WrappedEtherInterface.sol";
 import "./MoneyMarketInterface.sol";
+import "./SafeMath.sol";
 
 contract CDP {
+  using SafeMath for uint;
   uint constant expScale = 10**18;
   uint constant collateralRatioBuffer = 25 * 10 ** 16;
   address creator;
@@ -47,8 +49,11 @@ contract CDP {
     uint availableBorrow = findAvailableBorrow(totalSupply, totalBorrow, collateralRatio);
 
     uint assetPrice = compoundMoneyMarket.assetPrices(borrowedToken);
-    /* available borrow is scaled 10e36, dividing asset price brings it to 10e18 */
-    uint tokenAmount = ( availableBorrow * expScale ) / assetPrice;
+    /*
+      available borrow & asset price are both scaled 10e18, so include extra
+      scale in numerator dividing asset to keep it there
+    */
+    uint tokenAmount = availableBorrow.mul(expScale).div(assetPrice);
     uint borrowStatus = compoundMoneyMarket.borrow(borrowedToken, tokenAmount);
     require(borrowStatus == 0, "borrow failed");
 
@@ -88,9 +93,9 @@ contract CDP {
 
   /* @dev returns borrow value in eth scaled to 10e18 */
   function findAvailableBorrow(uint currentSupplyValue, uint currentBorrowValue, uint collateralRatio) public pure returns (uint) {
-    uint totalPossibleBorrow =  ( currentSupplyValue  * expScale ) / ( collateralRatio + collateralRatioBuffer );
+    uint totalPossibleBorrow = currentSupplyValue.mul(expScale).div(collateralRatio.add(collateralRatioBuffer));
     if ( totalPossibleBorrow > currentBorrowValue ) {
-      return (totalPossibleBorrow - currentBorrowValue) / expScale;
+      return totalPossibleBorrow.sub(currentBorrowValue).div(expScale);
     } else {
       return 0;
     }
@@ -98,9 +103,9 @@ contract CDP {
 
   /* @dev returns available withdrawal in eth scale to 10e18 */
   function findAvailableWithdrawal(uint currentSupplyValue, uint currentBorrowValue, uint collateralRatio) public pure returns (uint) {
-    uint requiredCollateralValue = currentBorrowValue * ( collateralRatio + collateralRatioBuffer ) / expScale;
+    uint requiredCollateralValue = currentBorrowValue.mul(collateralRatio.add(collateralRatioBuffer)).div(expScale);
     if ( currentSupplyValue > requiredCollateralValue ) {
-      return ( currentSupplyValue - requiredCollateralValue ) / expScale;
+      return currentSupplyValue.sub(requiredCollateralValue).div(expScale);
     } else {
       return 0;
     }
