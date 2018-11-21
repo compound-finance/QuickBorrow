@@ -63,11 +63,11 @@ contract TokenBorrowerFactory {
     }
   }
 
-  function getBorrowBalance() view public returns (uint) {
-    return compoundMoneyMarket.getBorrowBalance(borrowers[msg.sender], token);
+  function getBorrowBalance(address user) view public returns (uint) {
+    return compoundMoneyMarket.getBorrowBalance(borrowers[user], token);
   }
 
-  function getSupplyBalance() view public returns (uint) {
-    return compoundMoneyMarket.getSupplyBalance(borrowers[msg.sender], wethAddress);
+  function getSupplyBalance(address user) view public returns (uint) {
+    return compoundMoneyMarket.getSupplyBalance(borrowers[user], wethAddress);
   }
 }

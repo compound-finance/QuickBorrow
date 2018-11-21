@@ -155,11 +155,13 @@ contract('TokenBorrowerFactory', function([account1, ...accounts]) {
       let borrower = await factory.borrowers.call(theAccount);
       let mmSupplyBalance = await mmm.getSupplyBalance.call(borrower, weth.address);
       let mmBorrowBalance = await mmm.getBorrowBalance.call(borrower, token.address);
+      assert.notEqual(mmSupplyBalance.toNumber(), 0);
+      assert.notEqual(mmBorrowBalance.toNumber(), 0);
 
-      let factorySupplyBalance = await factory.getSupplyBalance.call({from: theAccount});
-      let factoryBorrowBalance = await factory.getBorrowBalance.call({from: theAccount});
+      let factorySupplyBalance = await factory.getSupplyBalance.call(theAccount);
+      let factoryBorrowBalance = await factory.getBorrowBalance.call(theAccount);
 
-      assert.equal(mmSupplyBalance.toString(), factorySupplyBalance.toString(), "reads weth supply value from momey market")
+      assert.equal(mmSupplyBalance.toString(), factorySupplyBalance.toString(), "reads weth supply value from momey market");
       assert.equal(mmBorrowBalance.toString(), factoryBorrowBalance.toString(), "reads token borrow value from money market");
     });
   });
