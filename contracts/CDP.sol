@@ -3,8 +3,10 @@ pragma solidity ^0.4.24;
 import "./EIP20Interface.sol";
 import "./WrappedEtherInterface.sol";
 import "./MoneyMarketInterface.sol";
+import "./SafeMath.sol";
 
 contract CDP {
+  using SafeMath for uint;
   uint constant expScale = 10**18;
   uint constant collateralRatioBuffer = 25 * 10 ** 16;
   address creator;
@@ -27,7 +29,10 @@ contract CDP {
     borrowedToken.approve(compoundMoneyMarket, uint(-1));
   }
 
-  /* @dev called from borrow factory, wraps eth and supplies weth, then borrows the token at address supplied in constructor */
+  /*
+    @dev called from borrow factory, wraps eth and supplies weth, then borrows
+     the token at address supplied in constructor
+  */
   function fund() payable external {
     require(creator == msg.sender);
 
@@ -44,8 +49,11 @@ contract CDP {
     uint availableBorrow = findAvailableBorrow(totalSupply, totalBorrow, collateralRatio);
 
     uint assetPrice = compoundMoneyMarket.assetPrices(borrowedToken);
-    /* factor exp scale out of asset price by including in numerator */
-    uint tokenAmount = availableBorrow * expScale / assetPrice;
+    /*
+      available borrow & asset price are both scaled 10e18, so include extra
+      scale in numerator dividing asset to keep it there
+    */
+    uint tokenAmount = availableBorrow.mul(expScale).div(assetPrice);
     uint borrowStatus = compoundMoneyMarket.borrow(borrowedToken, tokenAmount);
     require(borrowStatus == 0, "borrow failed");
 
@@ -64,15 +72,14 @@ contract CDP {
 
     /* ---------- withdraw excess collateral weth ------- */
     uint collateralRatio = compoundMoneyMarket.collateralRatio();
-    (/* uint status */, uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
-
-    uint availableWithdrawal = findAvailableWithdrawal(totalSupply, totalBorrow, collateralRatio);
+    (uint status , uint totalSupply, uint totalBorrow) = compoundMoneyMarket.calculateAccountValues(address(this));
+    require(status == 0, "calculating account values failed");
 
     uint amountToWithdraw;
     if (totalBorrow == 0) {
       amountToWithdraw = uint(-1);
     } else {
-      amountToWithdraw = availableWithdrawal;
+      amountToWithdraw = findAvailableWithdrawal(totalSupply, totalBorrow, collateralRatio);
     }
 
     uint withdrawStatus = compoundMoneyMarket.withdraw(weth, amountToWithdraw);
@@ -84,29 +91,23 @@ contract CDP {
     owner.transfer(address(this).balance);
   }
 
+  /* @dev returns borrow value in eth scaled to 10e18 */
   function findAvailableBorrow(uint currentSupplyValue, uint currentBorrowValue, uint collateralRatio) public pure returns (uint) {
-    uint totalPossibleBorrow =  currentSupplyValue / ( collateralRatio + collateralRatioBuffer );
-    // subtract current borrow for max borrow supported by current collateral
-    // totalPossibleBorrow was descaled when dividing by collateral ratio, add back in exponential scale
-    uint scaledLiquidity = ( totalPossibleBorrow * expScale ) - ( currentBorrowValue ); // this can go negative, so cast to int
-    uint liquidity = scaledLiquidity / expScale;
-    if ( liquidity > totalPossibleBorrow ) {
-      // subtracting current borrow from possible borrow underflowed, account is undercollateralized
-      return 0;
+    uint totalPossibleBorrow = currentSupplyValue.mul(expScale).div(collateralRatio.add(collateralRatioBuffer));
+    if ( totalPossibleBorrow > currentBorrowValue ) {
+      return totalPossibleBorrow.sub(currentBorrowValue).div(expScale);
     } else {
-      return liquidity;
+      return 0;
     }
   }
 
+  /* @dev returns available withdrawal in eth scale to 10e18 */
   function findAvailableWithdrawal(uint currentSupplyValue, uint currentBorrowValue, uint collateralRatio) public pure returns (uint) {
-    uint requiredCollateralValue = ( currentBorrowValue / expScale ) * ( collateralRatio + collateralRatioBuffer );
-    uint scaledAvailableWithdrawal = currentSupplyValue - requiredCollateralValue;
-    uint availableWithdrawal = scaledAvailableWithdrawal / expScale;
-    if (availableWithdrawal > currentSupplyValue ) {
-      // subtracting availableWithdrawal from requiredCollateral underflowed, account is undercollateralized
-      return 0;
+    uint requiredCollateralValue = currentBorrowValue.mul(collateralRatio.add(collateralRatioBuffer)).div(expScale);
+    if ( currentSupplyValue > requiredCollateralValue ) {
+      return currentSupplyValue.sub(requiredCollateralValue).div(expScale);
     } else {
-      return availableWithdrawal;
+      return 0;
     }
   }
 
